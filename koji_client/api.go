@@ -41,7 +41,9 @@ func (cli *APIClient) makePublicRequest(method, url_str string, reader *bytes.Re
 
 	req_hdr := req.Header
 	req_hdr.Set("Content-Type", "application/json")
-	req_hdr.Set("Authorization", "Bearer "+cli.bearerToken)
+	if cli.bearerToken != "" {
+		req_hdr.Set("Authorization", "Bearer "+cli.bearerToken)
+	}
 
 	resp, err := cli.httpClient.Do(req)
 	if err != nil {

@@ -3,9 +3,10 @@ package exporters
 import (
 	"context"
 
-	"github.com/UnownHash/Fletchling/koji_client"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
+
+	"github.com/UnownHash/Fletchling/koji_client"
 )
 
 type KojiExporter struct {

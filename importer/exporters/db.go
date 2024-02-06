@@ -3,9 +3,10 @@ package exporters
 import (
 	"context"
 
-	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
+
+	"github.com/UnownHash/Fletchling/db_store"
 )
 
 type DBExporter struct {
