@@ -11,8 +11,8 @@
 ## Hold stats covering at most this many hours (default 12)
 # max_history_duration_hours = 12
 
-## how many spawnpoints required in the geofence in order to track (default 5)
-# min_spawnpoints = 5
+## how many spawnpoints required in the geofence in order to track (default 10)
+# min_spawnpoints = 10
 
 ## minimum area in meters^2 required in order to track (default 100.0)
 # min_area_m2 = 100.0
