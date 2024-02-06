@@ -1,0 +1,78 @@
+[processor]
+## Whether to log the last stats period when processing (default false)
+# log_last_stats_period = false
+
+## how often to rotate stats (default 15)
+# rotation_interval_minutes = 15
+
+## Require this many minutes of stats in order to produce the nesting pokemon and update the DB (default 1)
+# min_history_duration_hours = 1
+
+## Hold stats covering at most this many hours (default 12)
+# max_history_duration_hours = 12
+
+## how many spawnpoints required in the geofence in order to track (default 5)
+# min_spawnpoints = 5
+
+## minimum area in meters^2 required in order to track (default 100.0)
+# min_area_m2 = 100.0
+
+## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
+# max_area_m2 = 10000000.0
+
+## number of a particular pokemon type seen needed to count as nesting (default 3)
+# min_nest_pokemon = 4
+
+## pct of particular pokemon type seen needed to count as nesting (default 12.0)
+# min_nest_pokemon_pct = 12.0
+
+## number of total pokemon seen in nest needed to count as nesting (default 12)
+# min_total_pokemon = 12
+
+## if > 0, ignore pokemon that are spawning globally more than this percent (default 15.0)
+# max_global_spawn_pct = 15.0
+
+## Mininium required pokemon NestPct/GlobalPct ratio (default 8.0)
+# min_nest_pct_to_global_pct_ratio = 8
+
+## Throw out a whole time period if a single mon spawns at more than this percent globally (default 40.0)
+# skip_period_min_global_spawn_pct = 40.0
+
+## How many hours without seeing a nesting pokemon before we unset it in DB (default 12)
+# no_nesting_pokemon_age_hours = 12
+
+#[koji]
+## url can be the full feature-collection url
+#url = "http://koji:8080/api/v1/geofence/feature-collection/PROJECT"
+#token = "bearer-token"
+## OR url can be: base-url and project
+#url = "http://koji:8080"
+#project = "PROJECT"
+#token = "bearer-token"
+
+[http]
+## http server listen address (default: 127.0.0.1:9042)
+# addr = "127.0.0.1:9042"
+
+## configuring the golbat DB will enable use of spawnpoints
+## to provide more efficient location -> nest matching. This
+## is not required.
+#[golbat_db]
+#addr = "dbhost"
+#db = "golbat"
+#user = "fletchling"
+#password = "xxx"
+
+# If you're already using the nests table in golbat db, configure
+# your golbat db info here.
+[nests_db]
+addr = "dbhost"
+db = "fletchling"
+user = "fletchling"
+password = "xxx"
+
+[logging]
+debug = false
+filename = "logs/fletchling.log"
+max_backups = 50
+compress = true

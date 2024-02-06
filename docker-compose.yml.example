@@ -1,0 +1,14 @@
+version: '3.7'
+services:
+  fletchling:
+    build: .
+    image: fletchling
+    restart: unless-stopped
+    volumes:
+      - ./configs:/fletchling/configs
+      - ./db_store/sql:/fletchling/db_store/sql
+      - ./logs:/fletchling/logs
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "9042:9042"

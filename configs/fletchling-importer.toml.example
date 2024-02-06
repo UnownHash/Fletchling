@@ -1,0 +1,38 @@
+[importer]
+min_area_m2 = 100
+max_area_m2 = 10000000
+
+[overpass_exporter]
+url = "https://overpass-api.de/api/interpreter"
+
+[koji_overpass_source]
+# base url. project will be specified on command line.
+url = "http://koji:8080"
+# token = "bearer-token"
+
+[koji_importer]
+# base url. project will be specified on command line.
+url = "http://koji:8080"
+# token = "bearer-token"
+
+[koji_exporter]
+# base url. project will be specified on command line.
+url = "http://koji:8080"
+# token = "bearer-token"
+
+[db_importer]
+addr = "dbhost"
+db = "fletchling"
+user = "fletchling"
+password = "xxx"
+
+[db_exporter]
+addr = "dbhost"
+db = "fletchling"
+user = "fletchling"
+password = "xxx"
+
+[logging]
+debug = false
+filename = "logs/fletchling-importer.log"
+max_backups = 50

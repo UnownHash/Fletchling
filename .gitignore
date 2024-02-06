@@ -19,3 +19,12 @@
 
 # Go workspace file
 go.work
+
+*~
+/configs/fletchling.toml
+/configs/fletchling-importer.toml
+/fletchling
+/fletchling-importer
+/docker-compose.yml
+/vendor
+/logs
