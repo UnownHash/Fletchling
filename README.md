@@ -1,7 +1,7 @@
 # Fletchling
 
 Fletchling is a Golbat webhook receiver that processes pokemon
-webhooks and computes nesting pokemon. Auth
+webhooks and computes nesting pokemon.
 
 # Features
 
