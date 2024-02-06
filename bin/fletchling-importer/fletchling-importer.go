@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -60,8 +61,8 @@ func main() {
 	ctx := context.Background()
 
 	configFilename := *configFlag
-	exporterName := args[0]
-	importerName := args[1]
+	exporterName := strings.ToLower(args[0])
+	importerName := strings.ToLower(args[1])
 
 	cfg, err := LoadConfig(configFilename)
 	if err != nil {
