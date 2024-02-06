@@ -27,7 +27,7 @@ types = ["pokemon_iv"]
 
 (UNTESTED)
 
-## nestcollector to fletching with database as authortative source (SIMPLEST)
+## nestcollector to Fletching with database as authortative source (SIMPLEST)
   1. configure your existing golbat db in configs/fletchling.toml
   2. do not configure koji section.
   3. nuke your cronjob.
