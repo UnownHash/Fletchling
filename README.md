@@ -38,7 +38,7 @@ types = ["pokemon_iv"]
   2. configure your koji endpoint (BASE URL ONLY) in configs/fletchling-importer.toml in the 'koji_importer' section.
   3. create a project for nests in koji.
   4. `./build.sh`
-  5. `./fletchling-importer -koji-dest-project 'YOURKOJIPROJECT' db koji`
+  5. `./fletchling-importer -koji-dest-project 'YOURKOJIPROJECT' db koji` -- If you want properties to be created in Koji if they are missing, also pass --
   6. check koji and fix up whatever you want.
   7. configure a new db or existing golbat db in configs/fletchling.toml
   8. configure koji section in configs/fletchling.toml

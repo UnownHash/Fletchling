@@ -202,9 +202,11 @@ func (mgr *NestProcessorManager) addOrUpdateNestInDb(ctx context.Context, nest *
 	return nil
 }
 
-// LoadConfig queries koji for the geofences to use based on the configured
-// project and sets up all of the associated objects and state. This is
-// used for both the initial configuration load as well as reloads.
+// LoadConfig queries the db (or koji merged with db) for the geofences
+// to use, filters them (min spawnpoints), etc, and sets up a new NestProcessor
+// for them. The stats and some state will be preserved if there was an existing
+// NestProcessor. LoadConfig() is used for both the initial configuration load as
+// well as reloads.
 // When an error occurs during reload, the previous configuration continues
 // running.
 //
