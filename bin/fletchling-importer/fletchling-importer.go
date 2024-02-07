@@ -35,9 +35,9 @@ func main() {
 	kojiExporterProjectFlag := flagSet.String("koji-src-project", "", "project name when loading areas from koji")
 	kojiImporterProjectFlag := flagSet.String("koji-dest-project", "", "project name when saving nests to koji")
 	kojiCreatePropsFlag := flagSet.Bool("koji-create-properties", false, "create missing properties in koji when saving nests to koji")
-	overpassKojiProjectFlag := flagSet.String("overpass-koji-project", "", "project name when --overpass-src is 'koji'")
+	overpassKojiProjectFlag := flagSet.String("overpass-koji-project", "", "project name when --overpass-areas-src is 'koji'")
 	overpassAreasSrcFlag := flagSet.String("overpass-areas-src", "", "where to get areas to search ('koji', or filename)")
-	overpassAreaFlag := flagSet.String("overpass-area", "", "the area for which to find nests from --overpass-src")
+	overpassAreaFlag := flagSet.String("overpass-area", "", "the area for which to find nests from --overpass-areas-src")
 
 	flagSet.Parse(os.Args[1:])
 
@@ -112,11 +112,11 @@ func main() {
 			}
 			overpassAreas = fc.Features
 		case "":
-			logger.Fatalf("'overpass' selected as source, but no --overpass-src given.")
+			logger.Fatalf("'overpass' selected as source, but no --overpass-areas-src given.")
 		default:
 			features, err := np_geo.LoadGeofencesFile(*overpassAreasSrcFlag)
 			if err != nil {
-				logger.Fatalf("--overpass-src should be 'koji' or a filename: %v", err)
+				logger.Fatalf("--overpass-areas-src should be 'koji' or a filename: %v", err)
 			}
 			if l := len(features); l == 0 {
 				logger.Fatalf("no geofence areas found in file %s", *overpassAreasSrcFlag)
