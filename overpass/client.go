@@ -131,47 +131,13 @@ var searchPrefix = `[out:json]
 [bbox:`
 var searchSuffix = `];
 (
-    way[leisure=park];
-    way[landuse=recreation_ground];
-    way[leisure=recreation_ground];
-    way[leisure=pitch];
-    way[leisure=garden];
-    way[leisure=golf_course];
-    way[leisure=playground];
-    way[landuse=meadow];
-    way[landuse=grass];
-    way[landuse=greenfield];
-    way[natural=scrub];
-    way[natural=heath];
-    way[natural=grassland];
-    way[landuse=farmyard];
-    way[landuse=vineyard];
-    way[landuse=farmland];
-    way[landuse=orchard];
-    way[natural=plateau];
-    way[natural=moor];
-    way["leisure"="nature_reserve"];
-    
-    rel[leisure=park];
-    rel[landuse=recreation_ground];
-    rel[leisure=recreation_ground];
-    rel[leisure=pitch];
-    rel[leisure=garden];
-    rel[leisure=golf_course];
-    rel[leisure=playground];
-    rel[landuse=meadow];
-    rel[landuse=grass];
-    rel[landuse=greenfield];
-    rel[natural=scrub];
-    rel[natural=heath];
-    rel[natural=grassland];
-    rel[landuse=farmyard];
-    rel[landuse=vineyard];
-    rel[landuse=farmland];
-    rel[landuse=orchard];
-    rel[natural=plateau];
-    rel[natural=moor];
-    rel["leisure"="nature_reserve"];
+    way["landuse"~"farmland|farmyard|grass|greenfield|meadow|orchard|recreation_ground|vineyard"];
+    way["leisure"~"garden|golf_course|nature_reserve|park|pitch|playground|recreation_ground"];
+    way["natural"~"grassland|heath|moor|plateau|scrub"];
+
+    rel["landuse"~"farmland|farmyard|grass|greenfield|meadow|orchard|recreation_ground|vineyard"];
+    rel["leisure"~"garden|golf_course|nature_reserve|park|pitch|playground|recreation_ground"];
+    rel["natural"~"grassland|heath|moor|plateau|scrub"];
 );
 out body;
 >;
