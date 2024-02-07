@@ -12,3 +12,16 @@ services:
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "9042:9042"
+
+  fletchling-importer:
+    image: fletchling
+    container_name: fletchling-importer
+    command: ./fletchling-importer
+    restart: never
+    profiles:
+      - cli
+    volumes:
+      - ./configs:/fletchling/configs
+      - ./logs:/fletchling/logs
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
