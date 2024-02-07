@@ -4,14 +4,39 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/UnownHash/Fletchling/overpass"
-	"github.com/sirupsen/logrus"
-
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 	"github.com/paulmach/osm/osmgeojson"
+	"github.com/sirupsen/logrus"
+
+	"github.com/UnownHash/Fletchling/overpass"
 )
+
+var sportMappings = map[string]string{
+	"american_football": "American Football Field",
+	"baseball":          "Baseball Field",
+	"basketball":        "Basketball Court",
+	"beachvolleyball":   "Volleyball Court",
+	"equestrian":        "Equestrian Area",
+	"football":          "Football Field",
+	"golf":              "Golf Course",
+	"horseshoes":        "Horseshoes Area",
+	"multi":             "Multipurpose Area",
+	"skateboard":        "Skate Park",
+	"soccer":            "Soccer Field",
+	"softball":          "Softball Field",
+	"tennis":            "Tennis Court",
+	"volleyball":        "Volleyball Court",
+}
+
+var leisureMappings = map[string]string{
+	"park":           "Park",
+	"garden":         "Garden",
+	"golf_course":    "Golf Course",
+	"nature_reserve": "Nature Reserve",
+	"playground":     "Playground",
+}
 
 type OverpassExporter struct {
 	logger             *logrus.Logger
@@ -45,30 +70,52 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 	idx := 0
 
 	for _, feature := range fc.Features {
+		geometry := feature.Geometry
+		featureCenter, _ := planar.CentroidArea(geometry)
+
 		overpass.AdjustFeatureProperties(feature)
+
+		id, _ := feature.Properties["id"]
+		if id == nil {
+			exporter.logger.Warnf("skipping osm feature with no id")
+			continue
+		}
 		name, _ := feature.Properties["name"].(string)
 		if name == "" {
-			exporter.logger.Warnf("skipping osm feature with no name")
-			continue
+			var mapping string
+
+			leisure, _ := feature.Properties["leisure"].(string)
+			if leisure == "pitch" {
+				sport, _ := feature.Properties["sport"].(string)
+				mapping, _ = sportMappings[sport]
+			} else {
+				mapping, _ = leisureMappings[leisure]
+			}
+
+			if mapping == "" {
+				exporter.logger.Warnf("skipping osm feature id '%v' with no name, leisure=%s", id, leisure)
+				continue
+			}
+			name = "Unknown " + mapping + fmt.Sprintf(" at %0.5f,%0.5f", featureCenter.Lat(), featureCenter.Lon())
+			feature.Properties[name] = name
+			exporter.logger.Infof("osm feature id '%v' has no name: using '%s'", id, name)
 		}
 
 		if exporter.parentPolygon != nil {
-			geometry := feature.Geometry
-			center, _ := planar.CentroidArea(geometry)
-			if !planar.PolygonContains(*exporter.parentPolygon, center) {
-				exporter.logger.Warnf("skipping osm feature '%s': result not within area", name)
+			if !planar.PolygonContains(*exporter.parentPolygon, featureCenter) {
+				exporter.logger.Warnf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
 				continue
 			}
 		} else if exporter.parentMultiPolygon != nil {
-			geometry := feature.Geometry
-			center, _ := planar.CentroidArea(geometry)
-			if !planar.MultiPolygonContains(*exporter.parentMultiPolygon, center) {
-				exporter.logger.Warnf("skipping osm feature '%s': result not within area", name)
+			if !planar.MultiPolygonContains(*exporter.parentMultiPolygon, featureCenter) {
+				exporter.logger.Warnf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
 				continue
 			}
 		}
 
-		if exporter.parentName != "" {
+		if exporter.parentName == "" {
+			delete(feature.Properties, "parent")
+		} else {
 			feature.Properties["parent"] = exporter.parentName
 		}
 

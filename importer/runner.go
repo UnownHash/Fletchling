@@ -34,6 +34,9 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 	config := runner.config
 
 	for _, feature := range baseFeatures {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		name, areaName, _, err := np_geo.NameAndIntIdFromFeature(feature)
 		if err != nil {
 			runner.logger.Warnf("ImportRunner: skipping feature: %v", err)

@@ -163,7 +163,7 @@ func main() {
 
 		projectName := *kojiExporterProjectFlag
 
-		kojiCli, err := koji_client.NewClient(logger, cfg.KojiImporter.Url, cfg.KojiImporter.Token)
+		kojiCli, err := koji_client.NewClient(logger, cfg.KojiExporter.Url, cfg.KojiExporter.Token)
 		if err != nil {
 			logger.Fatalf("failed to create koji client for koji exporter: %v", err)
 		}
