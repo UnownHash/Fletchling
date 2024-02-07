@@ -41,6 +41,10 @@
 ## How many hours without seeing a nesting pokemon before we unset it in DB (default 12)
 # no_nesting_pokemon_age_hours = 12
 
+# Uncomment and configure to use koji as your authoritative source of nests, instead of the
+# nests DB. (nests will be copied to the DB from koji. Existing nests in the nests DB will
+# not be used or touched in this case. If you are switching to use Koji, you should import
+# your existing DB nests into Koji using the importer tool)
 #[koji]
 ## url can be the full feature-collection url
 #url = "http://koji:8080/api/v1/geofence/feature-collection/PROJECT"
@@ -52,24 +56,28 @@
 
 [http]
 ## http server listen address (default: 127.0.0.1:9042)
+## If you run docker, change this to ":9042" or "0.0.0.0:9042"
 # addr = "127.0.0.1:9042"
 
-## configuring the golbat DB will enable use of spawnpoints
-## to provide more efficient location -> nest matching. This
-## is not required.
+## configuring the golbat DB is required in order to do spawnpoint
+## filtering (i.e., 'min_spawnpoints' above). Otherwise, it is optional.
+## This is *NOT* the configuration for your nests DB.
 #[golbat_db]
 #addr = "dbhost"
 #db = "golbat"
-#user = "fletchling"
-#password = "xxx"
+#user = "username"
+#password = "password"
 
+# Here's your configuration for the nests DB. This will be where the 'nests'
+# table is created/used.
 # If you're already using the nests table in golbat db, configure
-# your golbat db info here.
+# your golbat db info here. This is a separate configuration from golbat_db above,
+# as you may use any database you want for nests.
 [nests_db]
 addr = "dbhost"
 db = "fletchling"
-user = "fletchling"
-password = "xxx"
+user = "username"
+password = "password"
 
 [logging]
 debug = false
