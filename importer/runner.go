@@ -39,7 +39,8 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		}
 		name, areaName, _, err := np_geo.NameAndIntIdFromFeature(feature)
 		if err != nil {
-			runner.logger.Warnf("ImportRunner: skipping feature: %v", err)
+			// exporters should deal with some of this, so only logging debug.
+			runner.logger.Debugf("ImportRunner: skipping feature: %v", err)
 			continue
 		}
 

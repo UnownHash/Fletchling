@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 	"github.com/sirupsen/logrus"
@@ -50,7 +49,7 @@ func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojso
 	}
 
 	if geofence := geofencesByNestId[nestId]; geofence != nil {
-		importer.logger.Warnf("KojiImporter: skipping feature '%s': id from properties(nestId -> %d) exists", name, nestId)
+		importer.logger.Warnf("KojiImporter: skipping feature '%s': id from properties(nestId -> %d) exists with name '%s'", name, nestId, geofence.Name)
 		return nil
 	}
 
@@ -62,45 +61,28 @@ func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojso
 		if geofence == nil {
 			return name
 		}
-		origGeofenceId = geofence.Id
 
 		featureCenter, _ := planar.CentroidArea(feature.Geometry)
-		geofenceCenter, _ := planar.CentroidArea(geofence.Geometry.Geometry())
+		altName := name + fmt.Sprintf(" at %0.5f,%0.5f", featureCenter.Lat(), featureCenter.Lon())
 
-		distanceMeters := geo.Distance(featureCenter, geofenceCenter)
-		if distanceMeters < 100 {
-			importer.logger.Infof("KojiImporter: feature name '%s' exists already and distance is close. Going to update.", name)
-			return name
-		}
-
-		newName := name + fmt.Sprintf(" at %0.5f,%0.5f", featureCenter.Lat(), featureCenter.Lon())
-
-		geofence = geofencesByName[newName]
-		if geofence == nil {
+		geofenceAlt := geofencesByName[altName]
+		if geofenceAlt == nil {
 			importer.logger.Warnf(
 				"KojiImporter: using name '%s' for original feature name '%s': original name exists",
-				newName,
+				altName,
 				name,
 			)
-			return newName
-		}
-		origGeofenceId = geofence.Id
-
-		featureCenter, _ = planar.CentroidArea(feature.Geometry)
-		geofenceCenter, _ = planar.CentroidArea(geofence.Geometry.Geometry())
-
-		if distanceMeters < 100 {
-			importer.logger.Warnf(
-				"KojiImporter: using name '%s' for original feature name '%s': both names exist and distance is close. Going to update",
-				newName,
-				name,
-			)
-			origGeofenceId = geofence.Id
-			return newName
+			return altName
 		}
 
-		importer.logger.Warnf("KojiImporter: skipping feature: name '%s' and '%s' both exist already and feature is not close in distance to either.", name, newName)
-		return ""
+		origGeofenceId = geofenceAlt.Id
+		importer.logger.Warnf(
+			"KojiImporter: using name '%s' for original feature name '%s': both names exist (will update)",
+			altName,
+			name,
+		)
+
+		return altName
 	}
 
 	name = checkDuplicate(name)
@@ -184,9 +166,9 @@ func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojso
 	geofencesByNestId[nestId] = geofence
 
 	if geofence.Id == origGeofenceId {
-		importer.logger.Infof("KojiImporter: Updated geofence %s(%d)", geofence.Name, geofence.Id)
+		importer.logger.Infof("KojiImporter: Updated geofence %s(%d)(nestId %d)", geofence.Name, geofence.Id, nestId)
 	} else {
-		importer.logger.Infof("KojiImporter: Created geofence %s(%d)", geofence.Name, geofence.Id)
+		importer.logger.Infof("KojiImporter: Created geofence %s(%d)(nestId %d)", geofence.Name, geofence.Id, nestId)
 	}
 
 	return geofence
@@ -251,6 +233,10 @@ func nestIdFromProperties(props []koji_client.GeofenceProperty) (int64, error) {
 					return 0, fmt.Errorf("id '%v' can't be parsed as int", v)
 				}
 				return nestId, nil
+			case int:
+				return int64(v), nil
+			case uint:
+				return int64(v), nil
 			case int64:
 				return v, nil
 			case uint64:
