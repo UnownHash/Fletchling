@@ -130,7 +130,8 @@ func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
 		srv.nestProcessorManager.ProcessPokemon(&npPokemon)
 		numProcessed++
 	}
-	srv.logger.Debugf("processed %d pokemon", numProcessed)
+
+	srv.logger.Debugf("processed %d pokemon from single webhook", numProcessed)
 }
 
 func (srv *HTTPServer) handleWebhook(c *gin.Context) {

@@ -39,9 +39,9 @@ func (np *NestProcessor) LogConfiguration(prefix string, numNests int) {
 	np.logger.Info(buf.String())
 }
 
-func (np *NestProcessor) AddPokemon(pokemon *models.Pokemon) {
+func (np *NestProcessor) AddPokemon(pokemon *models.Pokemon) AddPokemonStats {
 	nests := np.nestMatcher.GetMatchingNests(pokemon.SpawnpointId, pokemon.Lat, pokemon.Lon)
-	np.statsCollection.AddPokemon(pokemon, nests)
+	return np.statsCollection.AddPokemon(pokemon, nests)
 }
 
 func (np *NestProcessor) RotateStats() *FrozenStatsCollection {

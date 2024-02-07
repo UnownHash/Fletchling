@@ -69,7 +69,6 @@ func (srv *HTTPServer) handleGetNests(c *gin.Context) {
 
 	for idx, nest := range nests {
 		apiNests[idx] = nestToAPINest(nest, false)
-		idx++
 	}
 
 	c.JSON(http.StatusOK, getNestsResponse{apiNests})
@@ -180,14 +179,12 @@ func (srv *HTTPServer) handleGetNestStats(c *gin.Context) {
 					PokemonCounts:   tpCounts.GlobalCounts,
 				}
 			}
-			idx++
 		}
 
 		statsByNest[nestIdx] = &APINestStatsTimePeriods{
 			Nest:        nestToAPINest(nest, false),
 			TimePeriods: timePeriods,
 		}
-		nestIdx++
 	}
 
 	resp := &APINestStatsResponse{

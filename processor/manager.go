@@ -42,7 +42,8 @@ type NestProcessorManager struct {
 	reloadMutex sync.Mutex
 	config      Config
 
-	processedCount atomic.Uint64
+	pokemonProcessedCount atomic.Uint64
+	nestsMatchedCount     atomic.Uint64
 
 	nestProcessorMutex sync.Mutex
 	nestProcessor      *NestProcessor
@@ -73,8 +74,9 @@ func (mgr *NestProcessorManager) GetNests() []*models.Nest {
 }
 
 func (mgr *NestProcessorManager) ProcessPokemon(pokemon *models.Pokemon) {
-	mgr.GetNestProcessor().AddPokemon(pokemon)
-	mgr.processedCount.Add(1)
+	resp := mgr.GetNestProcessor().AddPokemon(pokemon)
+	mgr.pokemonProcessedCount.Add(resp.NumPokemonProcessed)
+	mgr.nestsMatchedCount.Add(resp.NumNestsMatched)
 }
 
 func (mgr *NestProcessorManager) processStats(ctx context.Context, nestProcessor *NestProcessor) {
@@ -151,8 +153,9 @@ func (mgr *NestProcessorManager) Run(ctx context.Context) {
 			}
 		case <-logTimer.C:
 			logTimerStopped = true
-			cnt := mgr.processedCount.Swap(0)
-			mgr.logger.Infof("PROCESSOR: processed %d pokemon", cnt)
+			pokemonCnt := mgr.pokemonProcessedCount.Swap(0)
+			nestsCnt := mgr.nestsMatchedCount.Swap(0)
+			mgr.logger.Infof("PROCESSOR: last minute: processed %d pokemon, matched %d nest(s)", pokemonCnt, nestsCnt)
 			logTimer.Reset(logInterval)
 			logTimerStopped = false
 		case <-statsTimer.C:

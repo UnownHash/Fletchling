@@ -10,6 +10,11 @@ import (
 	"github.com/UnownHash/Fletchling/processor/models"
 )
 
+type AddPokemonStats struct {
+	NumPokemonProcessed uint64
+	NumNestsMatched     uint64
+}
+
 // This is protected by the other structures using it and
 // doesn't require locking.
 type CountsByPokemon struct {
@@ -135,18 +140,19 @@ func (tpCounts *CountsForTimePeriod) Duration() time.Duration {
 	return endTime.Sub(tpCounts.StartTime).Truncate(time.Minute)
 }
 
-func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) bool {
+func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) (resp AddPokemonStats) {
 	tpCounts.mutex.Lock()
 	defer tpCounts.mutex.Unlock()
 
 	if tpCounts.Frozen {
 		// only happens if we have a bug!
-		return false
+		return
 	}
 
 	pokemonKey := pokemon.Key()
 	tpCounts.GlobalCounts.Total++
 	tpCounts.GlobalCounts.ByPokemon[pokemonKey]++
+
 	for _, nest := range nests {
 		nestCount := tpCounts.NestCounts[nest.Id]
 		if nestCount == nil {
@@ -157,7 +163,10 @@ func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests [
 		tpCounts.NestCounts[nest.Id] = nestCount
 	}
 
-	return true
+	resp.NumPokemonProcessed++
+	resp.NumNestsMatched += uint64(len(nests))
+
+	return
 }
 
 func (tpCounts *CountsForTimePeriod) GetOrderedGlobalPokemon() PokemonCountAndTotals {
@@ -264,7 +273,7 @@ type StatsCollection struct {
 	Totals *CountsForTimePeriod
 
 	// mutex protects only the below addresses being
-	// changed and they only change on rotation.
+	// changed and they only change on rotation or purge.
 	// CountsByTimePeriod is guarded by its own locks,
 	// as is Totals above.
 	mutex sync.RWMutex
@@ -384,19 +393,21 @@ func (stats *StatsCollection) Len() int {
 	return len(stats.CountsByTimePeriod)
 }
 
-func (stats *StatsCollection) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) {
-	// Yes, we'll be writing. But this lock only protects rotation, and we're not rotating.
+func (stats *StatsCollection) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) AddPokemonStats {
+	// Yes, we'll be writing, but this lock only protects rotation and purges.
 	// Each time period has its own locking that to protect its structures.
 	stats.mutex.RLock()
 	defer stats.mutex.RUnlock()
 
 	// there's always an entry
 	latest := stats.CountsByTimePeriod[len(stats.CountsByTimePeriod)-1]
-	if !latest.AddPokemon(pokemon, nests) {
+	resp := latest.AddPokemon(pokemon, nests)
+	if resp.NumPokemonProcessed == 0 {
 		stats.logger.Warnf("time period unexpectedly frozen when adding pokemon")
-	} else {
-		stats.Totals.AddPokemon(pokemon, nests)
+		return resp
 	}
+	stats.Totals.AddPokemon(pokemon, nests)
+	return resp
 }
 
 func (stats *StatsCollection) GetSnapshot() *FrozenStatsCollection {
