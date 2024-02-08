@@ -1,5 +1,63 @@
+## Here's your configuration for the nests DB. This will be where the 'nests'
+## table is created/used.
+## If you're already using the nests table in golbat db, configure
+## your golbat db info here. This is a separate configuration from golbat_db
+## below, as you may use any database you want for nests.
+##
+## This is also the database that will be used if you use the importer tool
+## to import into the db.
+[nests_db]
+addr = "dbhost"
+db = "fletchling"
+user = "username"
+password = "password"
+
+## Uncomment and configure to use Koji as your authoritative source of nests,
+## instead of the nests DB above. (When Fletchling starts or reloads, it pulls
+## all nests from Koji and adds any nests to the nests DB that are not yet in
+## there.)
+## Existing nests that are in the nests DB but are not in Koji will be left alone
+## and not used.
+## The importer tools can be used to find and import nests from Overpass or you
+## can import existing nests from the nests DB.
+#[koji]
+#url = "http://127.0.0.1:8080/api/v1/geofence/feature-collection/PROJECT"
+#token = "bearer-token"
+
+## configuring the golbat DB is required in order to do spawnpoint
+## filtering (i.e., 'min_spawnpoints' above). Otherwise, it is optional.
+## This is *NOT* the configuration for your nests DB, even though it
+## may be the same!
+#[golbat_db]
+#addr = "dbhost"
+#db = "golbat"
+#user = "username"
+#password = "password"
+
+[http]
+## http server listen address (default: 127.0.0.1:9042)
+## If you run docker, change this to ":9042" or "0.0.0.0:9042"
+addr = "127.0.0.1:9042"
+
+[logging]
+debug = false
+filename = "logs/fletchling.log"
+max_backups = 50
+compress = true
+
 [processor]
+## how many spawnpoints required in the geofence in order to track (default 10)
+# min_spawnpoints = 10
+
+## minimum area in meters^2 required in order to track (default 100.0)
+# min_area_m2 = 100.0
+
+## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
+# max_area_m2 = 10000000.0
+
 ## Whether to log the last stats period when processing (default false)
+## This just dumps info about the single time period that just finished
+## to the logs.
 # log_last_stats_period = false
 
 ## how often to rotate stats (default 15)
@@ -10,15 +68,6 @@
 
 ## Hold stats covering at most this many hours (default 12)
 # max_history_duration_hours = 12
-
-## how many spawnpoints required in the geofence in order to track (default 10)
-# min_spawnpoints = 10
-
-## minimum area in meters^2 required in order to track (default 100.0)
-# min_area_m2 = 100.0
-
-## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
-# max_area_m2 = 10000000.0
 
 ## number of a particular pokemon type seen needed to count as nesting (default 3)
 # min_nest_pokemon = 4
@@ -40,47 +89,3 @@
 
 ## How many hours without seeing a nesting pokemon before we unset it in DB (default 12)
 # no_nesting_pokemon_age_hours = 12
-
-# Uncomment and configure to use koji as your authoritative source of nests, instead of the
-# nests DB. (nests will be copied to the DB from koji. Existing nests in the nests DB will
-# not be used or touched in this case. If you are switching to use Koji, you should import
-# your existing DB nests into Koji using the importer tool)
-#[koji]
-## url can be the full feature-collection url
-#url = "http://koji:8080/api/v1/geofence/feature-collection/PROJECT"
-#token = "bearer-token"
-## OR url can be: base-url and project
-#url = "http://koji:8080"
-#project = "PROJECT"
-#token = "bearer-token"
-
-[http]
-## http server listen address (default: 127.0.0.1:9042)
-## If you run docker, change this to ":9042" or "0.0.0.0:9042"
-# addr = "127.0.0.1:9042"
-
-## configuring the golbat DB is required in order to do spawnpoint
-## filtering (i.e., 'min_spawnpoints' above). Otherwise, it is optional.
-## This is *NOT* the configuration for your nests DB.
-#[golbat_db]
-#addr = "dbhost"
-#db = "golbat"
-#user = "username"
-#password = "password"
-
-# Here's your configuration for the nests DB. This will be where the 'nests'
-# table is created/used.
-# If you're already using the nests table in golbat db, configure
-# your golbat db info here. This is a separate configuration from golbat_db above,
-# as you may use any database you want for nests.
-[nests_db]
-addr = "dbhost"
-db = "fletchling"
-user = "username"
-password = "password"
-
-[logging]
-debug = false
-filename = "logs/fletchling.log"
-max_backups = 50
-compress = true

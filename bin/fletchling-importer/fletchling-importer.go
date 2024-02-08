@@ -114,7 +114,7 @@ func main() {
 		case "":
 			logger.Fatalf("'overpass' selected as source, but no --overpass-areas-src given.")
 		default:
-			features, err := np_geo.LoadGeofencesFile(*overpassAreasSrcFlag)
+			features, err := np_geo.LoadFeaturesFromFile(*overpassAreasSrcFlag)
 			if err != nil {
 				logger.Fatalf("--overpass-areas-src should be 'koji' or a filename: %v", err)
 			}
