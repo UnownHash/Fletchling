@@ -77,9 +77,12 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 
 		id, _ := feature.Properties["id"]
 		if id == nil {
-			exporter.logger.Warnf("skipping osm feature with no id")
+			exporter.logger.Debugf("skipping osm feature with no id")
 			continue
 		}
+
+		var wasNoName bool
+
 		name, _ := feature.Properties["name"].(string)
 		if name == "" {
 			var mapping string
@@ -92,22 +95,22 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 				mapping, _ = leisureMappings[leisure]
 			}
 			if mapping == "" {
-				exporter.logger.Warnf("skipping osm feature id '%v' at %0.5f,%0.5f with no name, leisure='%s'", id, featureCenter.Lat(), featureCenter.Lon(), leisure)
+				exporter.logger.Debugf("skipping osm feature id '%v' at %0.5f,%0.5f with no name, leisure='%s'", id, featureCenter.Lat(), featureCenter.Lon(), leisure)
 				continue
 			}
 			name = "Unknown " + mapping
 			feature.Properties[name] = name
-			exporter.logger.Infof("osm feature id '%v' at %0.5f,%0.5f has no name: using '%s'", id, featureCenter.Lat(), featureCenter.Lon(), name)
+			wasNoName = true
 		}
 
 		if exporter.parentPolygon != nil {
 			if !planar.PolygonContains(*exporter.parentPolygon, featureCenter) {
-				exporter.logger.Warnf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
+				exporter.logger.Debugf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
 				continue
 			}
 		} else if exporter.parentMultiPolygon != nil {
 			if !planar.MultiPolygonContains(*exporter.parentMultiPolygon, featureCenter) {
-				exporter.logger.Warnf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
+				exporter.logger.Debugf("skipping osm feature '%s': %0.5f,%0.5f not within area", name, featureCenter.Lat(), featureCenter.Lon())
 				continue
 			}
 		}
@@ -116,6 +119,10 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 			delete(feature.Properties, "parent")
 		} else {
 			feature.Properties["parent"] = exporter.parentName
+		}
+
+		if wasNoName {
+			exporter.logger.Debugf("osm feature id '%v' at %0.5f,%0.5f has no name: using '%s'", id, featureCenter.Lat(), featureCenter.Lon(), name)
 		}
 
 		features[idx] = feature

@@ -13,6 +13,17 @@ services:
     ports:
       - "9042:9042"
 
+  fletchling-osm-importer:
+    image: fletchling
+    container_name: fletchling-osm-importer
+    command: ./fletchling-osm-importer
+    restart: never
+    profiles:
+      - cli
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
   fletchling-importer:
     image: fletchling
     container_name: fletchling-importer
