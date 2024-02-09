@@ -40,10 +40,11 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 		}()
 		err = httpServer.ListenAndServe()
 		if err != nil {
-			if err != http.ErrServerClosed {
+			if err == http.ErrServerClosed {
+				err = nil
+			} else {
 				err = fmt.Errorf("Failed to listen and start http server: %w", err)
 			}
-			err = nil
 		}
 	}()
 
