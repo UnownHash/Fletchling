@@ -49,6 +49,34 @@ SELECT id FROM spawnpoint
 	return spawnpoint_ids, nil
 }
 
+func (st *GolbatDBStore) GetSpawnpointsCount(ctx context.Context, geom *geojson.Geometry) (int64, error) {
+	const getContainedSpawnpointsQuery = `
+SELECT COUNT(*) FROM spawnpoint
+    WHERE lat > ? AND lon > ?
+		AND lat < ? AND lon < ?
+		AND last_seen > UNIX_TIMESTAMP(NOW() - INTERVAL 7 DAY)
+		AND ST_CONTAINS(ST_GeomFromGeoJSON(?, 2, 0), POINT(lon, lat))`
+
+	bbox := geom.Geometry().Bound()
+	bytes, err := geom.MarshalJSON()
+	if err != nil {
+		return 0, err
+	}
+
+	row := st.db.QueryRowxContext(ctx, getContainedSpawnpointsQuery, bbox.Min.Lat(), bbox.Min.Lon(), bbox.Max.Lat(), bbox.Max.Lon(), bytes)
+	if err != nil {
+		return 0, err
+	}
+
+	var numSpawnpoints int64
+
+	if err := row.Scan(&numSpawnpoints); err != nil {
+		return 0, err
+	}
+
+	return numSpawnpoints, nil
+}
+
 func NewGolbatDBStore(config DBConfig, logger *logrus.Logger) (*GolbatDBStore, error) {
 	db, err := sqlx.Connect("mysql", config.AsDSN())
 	if err != nil {

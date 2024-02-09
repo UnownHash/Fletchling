@@ -1,4 +1,4 @@
-all: fletchling fletchling-osm-importer fletchling-importer
+all: fletchling fletchling-osm-importer
 
 deps:
 	if [ ! -f vendor/modules.txt ]; then go mod download; fi
@@ -9,8 +9,5 @@ fletchling: deps
 fletchling-osm-importer: deps
 	CGO_ENABLED=0 go build ./bin/fletchling-osm-importer/...
 
-fletchling-importer: deps
-	CGO_ENABLED=0 go build ./bin/fletchling-importer/...
-
 clean:
-	rm -f fletchling fletchling-osm-importer fletchling-importer
+	rm -f fletchling fletchling-osm-importer

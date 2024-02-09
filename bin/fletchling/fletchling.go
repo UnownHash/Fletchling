@@ -38,7 +38,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger := cfg.CreateLogger()
+	logger := cfg.CreateLogger(true)
 
 	logger.Infof("STARTUP: config loaded.")
 
@@ -65,7 +65,7 @@ func main() {
 
 	logger.Debugf("STARTUP: signal handler installed.")
 
-	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger, "file://db_store/sql")
+	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger)
 	if err != nil {
 		logger.Fatalf("failed to create nests dbStore: %v", err)
 	}

@@ -94,13 +94,13 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 			} else {
 				mapping, _ = leisureMappings[leisure]
 			}
-			if mapping == "" {
-				exporter.logger.Debugf("skipping osm feature id '%v' at %0.5f,%0.5f with no name, leisure='%s'", id, featureCenter.Lat(), featureCenter.Lon(), leisure)
-				continue
+
+			// if we still don't have a name, leave it with no name
+			if mapping != "" {
+				name = "Unknown " + mapping
+				feature.Properties[name] = name
+				wasNoName = true
 			}
-			name = "Unknown " + mapping
-			feature.Properties[name] = name
-			wasNoName = true
 		}
 
 		if exporter.parentPolygon != nil {
@@ -122,7 +122,7 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 		}
 
 		if wasNoName {
-			exporter.logger.Debugf("osm feature id '%v' at %0.5f,%0.5f has no name: using '%s'", id, featureCenter.Lat(), featureCenter.Lon(), name)
+			exporter.logger.Infof("osm feature id '%v' at %0.5f,%0.5f had no name: using '%s'", id, featureCenter.Lat(), featureCenter.Lon(), name)
 		}
 
 		features[idx] = feature

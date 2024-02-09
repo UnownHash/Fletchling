@@ -1,31 +1,24 @@
+##
+## fletchling.toml.example
+##
+
 ## Here's your configuration for the nests DB. This will be where the 'nests'
 ## table is created/used.
 ## If you're already using the nests table in golbat db, configure
 ## your golbat db info here. This is a separate configuration from golbat_db
-## below, as you may use any database you want for nests.
-##
-## This is also the database that will be used if you use the importer tool
-## to import into the db.
+## below, because you may use any database you want for nests.
 [nests_db]
 addr = "dbhost"
 db = "fletchling"
 user = "username"
 password = "password"
 
-## Uncomment and configure to use Koji as your authoritative source of nests,
-## instead of the nests DB above. (When Fletchling starts or reloads, it pulls
-## all nests from Koji and adds any nests to the nests DB that are not yet in
-## there.)
-## Existing nests that are in the nests DB but are not in Koji will be left alone
-## and not used.
-## The importer tools can be used to find and import nests from Overpass or you
-## can import existing nests from the nests DB.
-#[koji]
-#url = "http://127.0.0.1:8080/api/v1/geofence/feature-collection/PROJECT"
-#token = "bearer-token"
-
-## configuring the golbat DB is required in order to do spawnpoint
-## filtering (i.e., 'min_spawnpoints' above). Otherwise, it is optional.
+## Configure your golbat DB if you want to be able to refresh the
+## number of spawnpoints that each nest has in order to use the
+## 'min_spawnpoints' filtering. Otherwise, Fletchling will use what's
+## in the DB already and if spawnpoints are not known, the nest
+## will be allowed (not filtered). Spawnpoints will only be queried
+## when we don't already have them (or in a future API call).
 ## This is *NOT* the configuration for your nests DB, even though it
 ## may be the same!
 #[golbat_db]
@@ -45,15 +38,25 @@ filename = "logs/fletchling.log"
 max_backups = 50
 compress = true
 
+# A number of options that can be tweaked. I would leave the options alone
+# that are commented out, at least to start. I find that the defaults work
+# well.
+# But, you may wish to limit your nests by area or spawnpoints. So, take a
+# look at those. The spawnpoints filter only works if you've configured the
+# 'golbat_db'.
 [processor]
 ## how many spawnpoints required in the geofence in order to track (default 10)
-# min_spawnpoints = 10
+## Requires the golbat_db section above to be configured. The number of
+## spawnpoints for your nests will only be computed at startup and reload
+## and only when they are not yet in the nests DB. There will be an API
+## call made available to refresh these.
+min_spawnpoints = 10
 
 ## minimum area in meters^2 required in order to track (default 100.0)
-# min_area_m2 = 100.0
+min_area_m2 = 100.0
 
 ## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
-# max_area_m2 = 10000000.0
+max_area_m2 = 10000000.0
 
 ## Whether to log the last stats period when processing (default false)
 ## This just dumps info about the single time period that just finished

@@ -19,7 +19,7 @@ type APINest struct {
 	Lon            float64                    `json:"lon"`
 	Geometry       *geojson.Geometry          `json:"geometry,omitempty"`
 	AreaName       *string                    `json:"area_name"`
-	Spawnpoints    int64                      `json:"spawnpoints"`
+	Spawnpoints    *int64                     `json:"spawnpoints"`
 	AreaM2         float64                    `json:"area_m2"`
 	Active         bool                       `json:"active,omitempty"`
 	Discarded      *string                    `json:"inactive_reason,omitempty"`

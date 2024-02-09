@@ -6,10 +6,9 @@ webhooks and computes nesting pokemon.
 # Features
 
 * receives and processes pokemon on the fly via webhook from Golbat
-* fletchling-importer (separate tool): Can copy nests from: overpass, db, or Koji to db or Koji.
-* Koji can be used as an authortative source for nests (optional)
+* fletchling-osm-importer (separate tool): Can copy nests from: overpass to db (or koji soon)
+* Koji can be used as an authortative source for nests (soon)
 * has an API to pull stats, purge stats, reload config, etc.
-* highly configurable.
 
 # Configuration
 
@@ -45,94 +44,86 @@ If you are using the included docker-compose.yml, golbat is also running under d
 2. The logfile is configurable in configs/fletchling.toml but defaults to logs/fletchling.log. Check it for errors.
 3. Every minute, a log message will appear saying how many pokemon were processed. If this is 0, it means that Fletchling is not getting any webhooks. Check your Golbat webhooks configuration. Check the address Fletchling is listening on (http section in config).
 
-# API
-
-* Get config: `curl http://localhost:9042/api/config`
-* Reload configuration: `curl http://localhost:9042/api/config/reload`
-  (Also supports PUT. You can also send a SIGHUP signal to the process)
-* Get all nests: `curl http://localhost:9042/api/nests`
-* Get single nest: `curl http://localhost:9042/api/nests/:nest_id`
-* Get all nests and full stats history: `curl http://localhost:9042/api/nests/_/stats`
-* Get single nest and its stats history: `curl http://localhost:9042/api/nests/_/:nest_id`
-
-Untested:
-
-* Purge all stats: `curl -X PUT http://localhost:9042/api/stats/purge/all`
-
-This ditches all stats history including the current time period. This starts the stats with a clean slate, but like startup.
-
-* Purge some duration of oldest stats: `curl -X PUT http://localhost:9042/api/stats/purge/oldest -d '{ "duration_minutes": xx }'`
-
-Purges the specified duration of the stats starting from the oldest. This will never remove the current unfinished time period. This can be used to nuke everything but the current time period by specifying a very high number of minutes.
-
-* Purge some duration of newest stats: `curl -X PUT http://localhost:9042/api/stats/purge/newest -d '{ "duration_minutes": xx, "include_current": false }'`
-
-Purges the specified amount of minutes of stats starting from the newest. 'include_current' specifies whether it should start with the current time period that is not done, or if it should start at the last period.
-
-* Ensure only a certain duration of stats exists: `curl -X PUT http://localhost:9042/api/stats/purge/keep -d '{ "duration_minutes": xx }'
-
-This is another way to purge oldest stats. But with this one, you specify the duration to keep, not the duration to purge.
-
-# Migrating from other nest processors:
-
-(UNTESTED)
+# Migrating from other nest processors
 
 ## nestcollector to Fletching with database as authortative source (SIMPLEST)
-  1. configure your existing golbat db in configs/fletchling.toml
-  2. do not configure Koji section.
-  3. nuke your cronjob.
-  4. start up fletchling 
+  1. Gather your Golbat DB info.
+  2. Create `configs/fletchling.toml` from the existing example config.
+     * configure your existing golbat db in configs/fletchling.toml in both 'nests_db' and 'golbat_db' sections.
+     * fix the listen address in 'http' section, if necessary.
+  4. nuke your cronjob.
+  5. start up fletchling 
 
-## nestcollector to Fletchling with Koji as authorative source.
-  1. configure your existing golbat db in configs/fletchling-importer.toml in the 'db_exporter' section.
-  2. configure your Koji endpoint (BASE URL ONLY) in configs/fletchling-importer.toml in the 'koji_importer' section.
-  3. create a project for nests in Koji.
-  4. `make`
-  5. `./fletchling-importer -koji-dest-project 'NESTS-PROJECT' db koji` - If you want properties to be created in Koji if they are missing, also pass -
-  6. check Koji and fix up whatever you want.
-  7. configure a new db or existing golbat db in configs/fletchling.toml
-  8. configure Koji section in configs/fletchling.toml
-  9. nuke your cronjob.
-  10. start up fletchling 
+## nestcollector to Fletchling with Koji as authorative source
 
-## The old nestwatcher db is not supported currently.
+This will be available soon.
+
+## Others
+
+I would just start over, personally. :)
 
 # Importing OSM data
 
-Overpass API can be queried to find parks, etc, to import into either Koji or your nests db.
+Overpass API can be queried to find parks, etc, to import into your nests db (or Koji soon).
 
-The fences/areas that are searched can come from either a poracle-style geofences.json or from Koji.
+The fences/areas that are searched can come from either a poracle-style json file, or a geojson FeatureCollection file, or Koji(soon).
 
-The example Koji project names below are only examples, of course. Choose your own.
+  1. If you want to find nests for your areas that are in Koji, make sure you have a project which exports your areas.
+  2. If you want to find nests for your areas that are in a file, make note of its location.
+  3. Gather your nests DB info/credentials. If you are currently using the Golbat DB, use this. Otherwise, if you are starting from scratch, use golbat or make a new database.
+  4. (Optional): Gather your golbat DB info/credentials (might be same as Step 3.). min_spawnpoints filtering will only work with this configured.
+  5. Create `configs/fletchling-osm-importer.toml` from the existing example config. The comments in the file should explain.
+  6. `./make`
+  7. `./fletchling-osm-importer 'AreaName'` to import a single area first, if you wish.
+  8. `./fletchling-osm-importer -all-areas` to import all areas.
 
-## Koji for areas and Koji for nests
-  1. Make sure you have a Koji project ('AREAS-PROJECT') that exports all of your geofences for your areas.
-  2. configure your Koji base url in the 'koji_overpass_source' section of configs/fletching-importer.toml
-  3. configure your nests db in the 'db_exporter' section in configs/fletchling.toml
-  4. `./fletchling-importer -overpass-areas-src koji -overpass-koji-project 'AREAS-PROJECT' -overpass-area 'AREA-NAME' overpass db`
-  5. Repeat this for every area you have, subtituting the 'AREA-NAME' you want to import nests for.
+# API
 
-## Koji for areas and DB for nests
-  1. Make sure you have a Koji project ('AREAS-PROJECT') that exports all of your geofences for your areas.
-  2. configure your Koji base url in the 'koji_overpass_source' section of configs/fletching-importer.toml
-  3. Make sure you have a Koji project created for importing the results ('NESTS-PROJECT'). These need to be separate project names or Koji instances.
-  4. configure your target Koji base url in the 'koji_importer' section of configs/fletching-importer.toml
-  5. `./fletchling-importer -koji-dest-project 'NESTS-PROJECT' -overpass-areas-src koji -overpass-koji-project 'AREAS-PROJECT' -overpass-area 'AREA-NAME' overpass Koji`
-  6. Repeat this for every area you have, subtituting the 'AREA-NAME' you want to import nests for.
+## Get config
+`curl http://localhost:9042/api/config`
 
-## A geofences.json file for areas
+## Reload configuration
+`curl http://localhost:9042/api/config/reload`
+(Also supports PUT. You can also send a SIGHUP signal to the process)
 
-Most of the options are the same as the above examples, but skip the Koji AREAS-PROJECT part. Drop the 'overpass-koji-project' argument. Change '-overpass-areas-src' from 'Koji' to a filename containing your areas.
+## Get all nests
+`curl http://localhost:9042/api/nests`
 
-You'll end up with something like this:
+## Get single nest
+`curl http://localhost:9042/api/nests/:nest_id`
 
-### Importing into DB
+## Get all nests and full stats history
+`curl http://localhost:9042/api/nests/_/stats`
 
- `./fletchling-importer -overpass-areas-src some-geofences-file.json -overpass-area 'AREA-NAME' overpass db`
+## Get single nest and its stats history
+`curl http://localhost:9042/api/nests/_/:nest_id`
 
-### Importing into Koji
+Untested:
 
-`./fletchling-importer -overpass-areas-src some-geofences-file.json -koji-dest-project 'NESTS-PROJECT' -overpass-area 'AREA-NAME' overpass Koji`
+## Purge all stats
+`curl -X PUT http://localhost:9042/api/stats/purge/all`
+
+This ditches all stats history including the current time period. This starts the stats with a clean slate, but like startup.
+
+## Purge some duration of oldest stats
+`curl -X PUT http://localhost:9042/api/stats/purge/oldest -d '{ "duration_minutes": xx }'`
+
+Purges the specified duration of the stats starting from the oldest. This will never remove the current unfinished time period. This can be used to nuke everything but the current time period by specifying a very high number of minutes.
+
+## Purge some duration of newest stats
+`curl -X PUT http://localhost:9042/api/stats/purge/newest -d '{ "duration_minutes": xx, "include_current": false }'`
+
+Purges the specified amount of minutes of stats starting from the newest. 'include_current' specifies whether it should start with the current time period that is not done, or if it should start at the last period.
+
+## Ensure only a certain duration of stats exists
+`curl -X PUT http://localhost:9042/api/stats/purge/keep -d '{ "duration_minutes": xx }'
+
+This is another way to purge oldest stats. But with this one, you specify the duration to keep, not the duration to purge.
+
+
+# Known issues
+
+The importer can import nests that are fully contained by other nests. For example, if a large park has a number of baseball fields, it is possible that nests for both the park and the fields will be imported. This will be fixed soon.
 
 # Enjoy!
 

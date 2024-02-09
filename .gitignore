@@ -22,9 +22,8 @@ go.work
 
 *~
 /configs/fletchling.toml
-/configs/fletchling-importer.toml
+/configs/fletchling-osm-importer.toml
 /fletchling
-/fletchling-importer
 /fletchling-osm-importer
 /docker-compose.yml
 /vendor

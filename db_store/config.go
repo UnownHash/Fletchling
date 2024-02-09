@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -14,7 +15,8 @@ type DBConfig struct {
 	Password string `koanf:"password"`
 	Db       string `koanf:"db"`
 
-	MaxPool int `koanf:"max_pool"`
+	MaxPool        int    `koanf:"max_pool"`
+	MigrationsPath string `koanf:"migrations_path"`
 }
 
 func (cfg *DBConfig) SetFromUri(uri *url.URL) error {
@@ -38,6 +40,15 @@ func (cfg *DBConfig) AsDSN() string {
 }
 
 func (cfg *DBConfig) Validate() error {
+	if path := cfg.MigrationsPath; path != "" {
+		fi, err := os.Stat(cfg.MigrationsPath)
+		if err != nil {
+			return fmt.Errorf("'migrations' path '%s' looks not great: %s", path, err)
+		}
+		if !fi.IsDir() {
+			return fmt.Errorf("'migrations' path '%s' is not a directory", path)
+		}
+	}
 	_, err := sqlx.Connect("mysql", cfg.AsDSN())
 	return err
 }
