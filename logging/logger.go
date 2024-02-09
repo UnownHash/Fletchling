@@ -33,16 +33,11 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func (cfg *Config) CreateLogger(writer io.Writer, wrapStdlibDefault bool) *logrus.Logger {
-	if writer == nil {
-		writer = os.Stderr
-	}
-
-	var output io.Writer
+func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool) *logrus.Logger {
+	output := io.Writer(os.Stdout)
 
 	if cfg.Filename != "" {
 		lumberjackLogger := &lumberjack.Logger{
-			// Log file absolute path, os agnostic
 			Filename:   cfg.Filename,
 			MaxSize:    cfg.MaxSizeMB,
 			MaxBackups: cfg.MaxBackups,
@@ -51,12 +46,12 @@ func (cfg *Config) CreateLogger(writer io.Writer, wrapStdlibDefault bool) *logru
 			LocalTime:  true,
 		}
 
-		lumberjackLogger.Rotate()
+		if rotate {
+			lumberjackLogger.Rotate()
+		}
 
 		// Fork writing into two outputs
-		output = io.MultiWriter(writer, lumberjackLogger)
-	} else {
-		output = writer
+		output = io.MultiWriter(output, lumberjackLogger)
 	}
 
 	logFormatter := &PlainFormatter{

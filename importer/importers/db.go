@@ -93,6 +93,8 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 		}
 
 		if existingNest != nil {
+			// preserve the name, in case unknown names have been corrected.
+			nest.Name = existingNest.Name
 			nest.Spawnpoints = existingNest.Spawnpoints
 			nest.PokemonId = existingNest.PokemonId
 			nest.PokemonForm = existingNest.PokemonForm

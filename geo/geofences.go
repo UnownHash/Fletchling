@@ -71,6 +71,12 @@ func LoadFeaturesFromFile(filename string) ([]*geojson.Feature, error) {
 				geofence.Path = append(geofence.Path, geofence.Path[0])
 			}
 
+			// flip lat/lon to lon/lat
+			for idx, point := range geofence.Path {
+				point[0], point[1] = point[1], point[0]
+				geofence.Path[idx] = point
+			}
+
 			feature := geojson.NewFeature(
 				orb.Polygon(
 					[]orb.Ring{

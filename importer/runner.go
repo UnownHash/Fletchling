@@ -6,6 +6,7 @@ import (
 
 	"github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
+	"github.com/paulmach/orb/planar"
 	"github.com/sirupsen/logrus"
 
 	np_geo "github.com/UnownHash/Fletchling/geo"
@@ -37,6 +38,20 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
+
+		if name, _ := feature.Properties["name"].(string); name == "" {
+			if config.DefaultName == "" {
+				runner.logger.Warnf("ImportRunner: skipping feature with no name and no default name configured")
+				continue
+			}
+			name = config.DefaultName
+			if config.DefaultNameLocation {
+				centroid, _ := planar.CentroidArea(feature.Geometry)
+				name += fmt.Sprintf(" at %0.5f,%0.5f", centroid.Lat(), centroid.Lon())
+			}
+			feature.Properties["name"] = name
+		}
+
 		name, areaName, _, err := np_geo.NameAndIntIdFromFeature(feature)
 		if err != nil {
 			// exporters should deal with some of this, so only logging debug.

@@ -134,7 +134,7 @@ type Nest struct {
 	Center      orb.Point
 	Geometry    *geojson.Geometry
 	AreaName    *string
-	Spawnpoints int64
+	Spawnpoints *int64
 	AreaM2      float64
 	Active      bool
 	Discarded   string
@@ -145,10 +145,11 @@ type Nest struct {
 }
 
 func (nest *Nest) FullName() string {
+	var namePrefix string
 	if nest.AreaName != nil {
-		return *nest.AreaName + "/" + nest.Name
+		namePrefix = *nest.AreaName + "/" + nest.Name
 	}
-	return nest.Name
+	return fmt.Sprintf("%s%s(NestId:%d)", namePrefix, nest.Name, nest.Id)
 }
 
 func (nest *Nest) String() string {
@@ -175,7 +176,7 @@ func (nest *Nest) AsDBStoreNest() *db_store.Nest {
 		Name:        nest.Name,
 		Polygon:     polygon,
 		AreaName:    null.StringFromPtr(nest.AreaName),
-		Spawnpoints: null.IntFrom(nest.Spawnpoints),
+		Spawnpoints: null.IntFromPtr(nest.Spawnpoints),
 		M2:          null.FloatFrom(nest.AreaM2),
 		Active:      null.BoolFrom(nest.Active),
 		Updated:     null.IntFrom(updatedAt.Unix()),
@@ -273,7 +274,7 @@ func NewNestFromDBStore(storeNest *db_store.Nest) (*Nest, error) {
 		Center:        orb.Point{storeNest.Lon, storeNest.Lat},
 		Geometry:      geometry,
 		AreaName:      storeNest.AreaName.Ptr(),
-		Spawnpoints:   storeNest.Spawnpoints.ValueOrZero(),
+		Spawnpoints:   storeNest.Spawnpoints.Ptr(),
 		AreaM2:        storeNest.M2.ValueOrZero(),
 		Active:        storeNest.Active.ValueOrZero(),
 		Discarded:     storeNest.Discarded.ValueOrZero(),

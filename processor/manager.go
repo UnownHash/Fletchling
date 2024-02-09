@@ -234,20 +234,20 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 
 	nestsById := make(map[int64]*models.Nest)
 
-	// first load all of the geofences into a new matcher.
-	nestMatcher := NewNestMatcher(mgr.logger, mgr.golbatDBStore == nil)
+	// first load all of the geofences into a new matcher. No spawnpoint caching anymore.
+	nestMatcher := NewNestMatcher(mgr.logger, true)
 
 	curNestProcessor := mgr.nestProcessor
 
 	if mgr.golbatDBStore == nil {
-		mgr.logger.Warnf("NEST-LOAD[]: No golbat DB configured. Spawnpoints will be unavailable")
+		mgr.logger.Warnf("NEST-LOAD[]: No golbat DB configured. New spawnpoint counts will not be able to be computed")
 	}
 
 	for _, nest := range nests {
 		fullName := nest.FullName()
 
-		// area and spawnpoints will be rechecked, other reasons we'll leave alone.
-		if !nest.Active && nest.Discarded != "area" && nest.Discarded != "spawnpoints" {
+		// area will be rechecked, other reasons we'll leave alone.
+		if !nest.Active && nest.Discarded != "area" {
 			mgr.logger.Warnf("NEST-LOAD[%s]: Nest is disabled (skipping this one).", fullName)
 			continue
 		}
@@ -258,9 +258,13 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 			continue
 		}
 
-		// do this before the spawnpoints query! Also do not save to db unless it's there already,
-		// in which case only update active/discarded.
+		// do this before the spawnpoints query! Also do not save to db unless it's there already
+		// and set to Active Only only update active/discarded.
 		if err := filter.FilterArea(nest.AreaM2); err != nil {
+			mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest due to filter: %s", fullName, err)
+			if !nest.Active {
+				continue
+			}
 			nest.Active = false
 			nest.Discarded = "area"
 			discarded := null.StringFrom(nest.Discarded)
@@ -268,35 +272,46 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 				Active:    &nest.Active,
 				Discarded: &discarded,
 			}, "disabling due to area filter.")
-			mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest due to filter: %s", fullName, err)
 			continue
 		}
 
-		var numSpawnpoints int64
-		var spawnpointIds []uint64
+		dbHasSpawnpoints := nest.Spawnpoints != nil
 
-		if mgr.golbatDBStore != nil {
-			var err error
+		if !dbHasSpawnpoints && mgr.golbatDBStore != nil {
+			mgr.logger.Infof("NEST-LOAD[%s]: number of spawnpoints is unknown. Will query golbat for them.", fullName)
 
-			spawnpointIds, err = mgr.golbatDBStore.GetContainedSpawnpoints(ctx, nest.Geometry)
+			numSpawnpoints, err := mgr.golbatDBStore.GetSpawnpointsCount(ctx, nest.Geometry)
 			if err != nil {
 				mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest: couldn't query spawnpoints: %#v", fullName, err)
 				continue
 			}
 
-			numSpawnpoints = int64(len(spawnpointIds))
-			nest.Spawnpoints = numSpawnpoints
+			nest.Spawnpoints = &numSpawnpoints
+		}
 
-			if err := filter.FilterSpawnpoints(numSpawnpoints); err != nil {
+		if nest.Spawnpoints == nil {
+			mgr.logger.Warnf("NEST-LOAD[%s]: allowing nest with unknown number of spawnpoints due to no golbat DB config", fullName)
+		} else {
+			if err := filter.FilterSpawnpoints(*nest.Spawnpoints); err != nil {
+				mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest: %s", fullName, err)
+
+				// update only if the nest WAS active... or if we didn't
+				// have the number of spawnpoints before.
+				if !nest.Active && dbHasSpawnpoints {
+					continue
+				}
+
+				// go ahead and store the current spawnpoints so we won't
+				// query again.
 				nest.Active = false
 				nest.Discarded = "spawnpoints"
 				discarded := null.StringFrom(nest.Discarded)
 				mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-					Spawnpoints: &numSpawnpoints,
+					Spawnpoints: nest.Spawnpoints,
 					Active:      &nest.Active,
 					Discarded:   &discarded,
 				}, "updating spawnpoints, disabling due to spawnpoints filter.")
-				mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest: %s", fullName, err)
+
 				continue
 			}
 		}
@@ -308,29 +323,30 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 			}
 		}
 
-		discarded := null.StringFrom("")
 		nest.Discarded = ""
 		nest.Active = true
 
-		if mgr.golbatDBStore == nil {
+		// update if !active in DB.. or if db didn't have spawnpoints but we have them now
+		if !nest.Active || (!dbHasSpawnpoints && nest.Spawnpoints != nil) {
+			discarded := null.StringFrom(nest.Discarded)
 			mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-				Active:    &nest.Active,
-				Discarded: &discarded,
-			}, "ensuring enabled")
-		} else {
-			mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-				Spawnpoints: &numSpawnpoints,
+				Spawnpoints: nest.Spawnpoints,
 				Active:      &nest.Active,
 				Discarded:   &discarded,
-			}, "updating spawnpoints, enabling")
+			}, "updating spawnpoints (if they were fetched) and enabling")
 		}
 
-		if err := nestMatcher.AddNest(nest, spawnpointIds); err != nil {
+		if err := nestMatcher.AddNest(nest, nil); err != nil {
 			mgr.logger.Warnf("NEST-LOAD[%s]: Failed to add nest to matcher: %v", fullName, err)
 			continue
 		}
 
-		mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded and active with %d spawnpoint(s)", fullName, numSpawnpoints)
+		if nest.Spawnpoints == nil {
+			mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded and active with unknown number of spawnpoints", fullName)
+		} else {
+			mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded and active with %d spawnpoint(s)", fullName, *nest.Spawnpoints)
+		}
+
 		nestsById[nest.Id] = nest
 	}
 

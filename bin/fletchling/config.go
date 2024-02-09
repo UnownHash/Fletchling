@@ -61,8 +61,8 @@ type Config struct {
 	GolbatDb *db_store.DBConfig `koanf:"golbat_db"`
 }
 
-func (cfg *Config) CreateLogger() *logrus.Logger {
-	return cfg.Logging.CreateLogger(nil, true)
+func (cfg *Config) CreateLogger(rotate bool) *logrus.Logger {
+	return cfg.Logging.CreateLogger(rotate, true)
 }
 
 func (cfg *Config) Validate() error {
@@ -111,8 +111,9 @@ var defaultConfig = Config{
 	},
 
 	NestsDb: db_store.DBConfig{
-		Addr: "127.0.0.1:3306",
-		Db:   "nests",
+		Addr:           "127.0.0.1:3306",
+		Db:             "fletchling",
+		MigrationsPath: "./db_store/sql",
 	},
 
 	/*

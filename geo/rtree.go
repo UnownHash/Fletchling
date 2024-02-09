@@ -11,7 +11,6 @@ import (
 )
 
 type FenceRTreeEntry[V any] struct {
-	feature      *geojson.Feature
 	polygon      orb.Polygon
 	multiPolygon orb.MultiPolygon
 	value        V
@@ -57,6 +56,10 @@ func (rt *FenceRTree[V]) insertMultiPolygon(multiPolygon orb.MultiPolygon, value
 	}
 	entry.containsFn = entry.multiPolygonContains
 	rt.insertEntry(multiPolygon.Bound(), entry)
+}
+
+func (rt *FenceRTree[V]) Len() int {
+	return rt.rtree.Len()
 }
 
 func (rt *FenceRTree[V]) InsertGeometry(geometry orb.Geometry, value V) error {

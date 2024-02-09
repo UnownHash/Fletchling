@@ -57,7 +57,7 @@ func (loader *KojiNestLoader) LoadNests(ctx context.Context) ([]*models.Nest, er
 			dbNest = kojiNest.AsDBStoreNest()
 		} else {
 			kojiNest.ExistsInDb = true
-			kojiNest.Spawnpoints = dbNest.Spawnpoints.ValueOrZero()
+			kojiNest.Spawnpoints = dbNest.Spawnpoints.Ptr()
 			kojiNest.AreaM2 = dbNest.M2.ValueOrZero()
 			kojiNest.Active = dbNest.Active.ValueOrZero()
 			kojiNest.Discarded = dbNest.Discarded.ValueOrZero()
