@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/paulmach/orb"
@@ -34,8 +35,15 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func (cli *Client) doSingleQuery(v url.Values) (*osm.OSM, error) {
-	resp, err := cli.httpClient.PostForm(cli.apiUrl, v)
+func (cli *Client) doSingleQuery(ctx context.Context, v url.Values) (*osm.OSM, error) {
+	req, err := http.NewRequest(http.MethodPost, cli.apiUrl, strings.NewReader(v.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := cli.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +96,7 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 	max_tries := 5
 
 	for {
-		osm_data, err := cli.doSingleQuery(urlValues)
+		osm_data, err := cli.doSingleQuery(ctx, urlValues)
 		if err == nil {
 			return osm_data, nil
 		}
