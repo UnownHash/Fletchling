@@ -28,3 +28,5 @@ go.work
 /docker-compose.yml
 /vendor
 /logs
+.idea/
+
