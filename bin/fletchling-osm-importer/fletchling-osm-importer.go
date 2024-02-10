@@ -85,7 +85,7 @@ func featuresFromKoji(logger *logrus.Logger, urlStr, token string) ([]*geojson.F
 }
 
 func getImporter(cfg Config, logger *logrus.Logger) (importers.Importer, error) {
-	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDB, logger)
+	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDB, logger, "")
 	if err != nil {
 		logger.Errorf("failed to init db for db importer: %v", err)
 		os.Exit(1)

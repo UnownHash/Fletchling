@@ -111,9 +111,8 @@ var defaultConfig = Config{
 	},
 
 	NestsDb: db_store.DBConfig{
-		Addr:           "127.0.0.1:3306",
-		Db:             "fletchling",
-		MigrationsPath: "./db_store/sql",
+		Addr: "127.0.0.1:3306",
+		Db:   "fletchling",
 	},
 
 	/*

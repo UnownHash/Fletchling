@@ -19,11 +19,10 @@ import (
 )
 
 const (
-	DEFAULT_NEST_NAME      = "Unknown Nest"
-	DEFAULT_OVERPASS_URL   = "https://overpass-api.de/api/interpreter"
-	DEFAULT_MIGRATION_PATH = "./db_store/sql"
-	DEFAULT_MIN_AREA_M2    = 100.0
-	DEFAULT_MAX_AREA_M2    = 10000000.0
+	DEFAULT_NEST_NAME    = "Unknown Nest"
+	DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+	DEFAULT_MIN_AREA_M2  = 100.0
+	DEFAULT_MAX_AREA_M2  = 10000000.0
 )
 
 type AreasConfig struct {
@@ -111,15 +110,13 @@ func (cfg *Config) Validate() error {
 
 var defaultConfig = Config{
 	Importer: importer.Config{
-		MinAreaM2:           DEFAULT_MIN_AREA_M2,
-		MaxAreaM2:           DEFAULT_MAX_AREA_M2,
-		DefaultName:         DEFAULT_NEST_NAME,
-		DefaultNameLocation: true,
+		MinAreaM2:   DEFAULT_MIN_AREA_M2,
+		MaxAreaM2:   DEFAULT_MAX_AREA_M2,
+		DefaultName: DEFAULT_NEST_NAME,
 	},
 	NestsDB: db_store.DBConfig{
-		Addr:           "127.0.0.1:3306",
-		Db:             "fletchling",
-		MigrationsPath: "./db_store/sql",
+		Addr: "127.0.0.1:3306",
+		Db:   "fletchling",
 	},
 	Overpass: OverpassConfig{
 		Url: DEFAULT_OVERPASS_URL,
