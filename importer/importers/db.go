@@ -3,16 +3,15 @@ package importers
 import (
 	"context"
 	"encoding/json"
-	"github.com/UnownHash/Fletchling/util"
 	"time"
 
-	"github.com/paulmach/orb/geo"
+	orb_geo "github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/db_store"
-	np_geo "github.com/UnownHash/Fletchling/geo"
+	"github.com/UnownHash/Fletchling/geo"
 )
 
 type DBImporter struct {
@@ -28,7 +27,7 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 	nowEpoch := time.Now().Unix()
 
 	for _, feature := range features {
-		name, areaName, nestId, err := np_geo.NameAndIntIdFromFeature(feature)
+		name, areaName, nestId, err := geo.NameAndIntIdFromFeature(feature)
 		if err != nil {
 			importer.logger.Warnf("DBImporter: skipping feature: %v", err)
 			continue
@@ -40,7 +39,7 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 		}
 
 		geometry := feature.Geometry
-		area := geo.Area(geometry)
+		area := orb_geo.Area(geometry)
 
 		existingNest, _ := importer.nestsDBStore.GetNestByID(ctx, nestId)
 
@@ -77,7 +76,7 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 			updated = null.IntFrom(nowEpoch)
 		}
 
-		center := util.GetPolygonLabelPoint(geometry)
+		center := geo.GetPolygonLabelPoint(geometry)
 
 		nest := &db_store.Nest{
 			NestId:    nestId,

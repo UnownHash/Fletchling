@@ -3,17 +3,17 @@ package models
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/UnownHash/Fletchling/util"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/paulmach/orb"
-	"github.com/paulmach/orb/geo"
+	orb_geo "github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/db_store"
+	"github.com/UnownHash/Fletchling/geo"
 )
 
 // NestingPokemonInfo contains info about a nesting pokemon. 'Count'
@@ -322,9 +322,9 @@ func NewNestFromKojiFeature(feature *geojson.Feature) (*Nest, error) {
 
 	geometry := feature.Geometry
 	jsonGeometry := geojson.NewGeometry(geometry)
-	center := util.GetPolygonLabelPoint(geometry)
+	center := geo.GetPolygonLabelPoint(geometry)
 
-	area := geo.Area(geometry)
+	area := orb_geo.Area(geometry)
 
 	return &Nest{
 		Id:       nestId,

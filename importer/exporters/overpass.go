@@ -3,13 +3,14 @@ package exporters
 import (
 	"context"
 	"fmt"
-	"github.com/UnownHash/Fletchling/util"
+
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geojson"
 	"github.com/paulmach/orb/planar"
 	"github.com/paulmach/osm/osmgeojson"
 	"github.com/sirupsen/logrus"
 
+	"github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/overpass"
 )
 
@@ -71,7 +72,7 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 
 	for _, feature := range fc.Features {
 		geometry := feature.Geometry
-		featureCenter := util.GetPolygonLabelPoint(geometry)
+		featureCenter := geo.GetPolygonLabelPoint(geometry)
 
 		overpass.AdjustFeatureProperties(feature)
 
