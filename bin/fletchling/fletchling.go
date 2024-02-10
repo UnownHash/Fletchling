@@ -44,6 +44,15 @@ func main() {
 
 	logger.Infof("STARTUP: config loaded.")
 
+	pyroscopeStatus := pyroscope.Run(cfg.Pyroscope)
+	if pyroscopeStatus.Started {
+		if pyroscopeStatus.Error != nil {
+			logger.Error("STARTUP: Failed to Initialized pyroscope")
+		} else {
+			logger.Info("STARTUP: Initialized pyroscope")
+		}
+	}
+
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -175,15 +184,6 @@ func main() {
 	err = httpServer.Run(ctx, cfg.HTTP.Addr, time.Second*5)
 	if err != nil {
 		logger.Fatalf("failed to run http server: %v", err)
-	}
-
-	pyroscopeStatus := pyroscope.Run(cfg.Pyroscope)
-	if pyroscopeStatus.Started {
-		if pyroscopeStatus.Error != nil {
-			logger.Error("STARTUP: Failed to Initialized pyroscope")
-		} else {
-			logger.Info("STARTUP: Initialized pyroscope")
-		}
 	}
 
 	// http server could have shut down early or not started. The defers
