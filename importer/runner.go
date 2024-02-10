@@ -3,12 +3,12 @@ package importer
 import (
 	"context"
 	"fmt"
-	"github.com/UnownHash/Fletchling/util"
-	"github.com/paulmach/orb/geo"
+
+	"github.com/UnownHash/Fletchling/geo"
+	orb_geo "github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 
-	np_geo "github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/importer/exporters"
 	"github.com/UnownHash/Fletchling/importer/importers"
 )
@@ -45,14 +45,14 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			}
 			name = config.DefaultName
 			if config.DefaultNameLocation {
-				centroid := util.GetPolygonLabelPoint(feature.Geometry)
+				centroid := geo.GetPolygonLabelPoint(feature.Geometry)
 
 				name += fmt.Sprintf(" at %0.5f,%0.5f", centroid.Lat(), centroid.Lon())
 			}
 			feature.Properties["name"] = name
 		}
 
-		name, areaName, _, err := np_geo.NameAndIntIdFromFeature(feature)
+		name, areaName, _, err := geo.NameAndIntIdFromFeature(feature)
 		if err != nil {
 			// exporters should deal with some of this, so only logging debug.
 			runner.logger.Debugf("ImportRunner: skipping feature: %v", err)
@@ -65,7 +65,7 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		}
 
 		geometry := feature.Geometry
-		area := geo.Area(geometry)
+		area := orb_geo.Area(geometry)
 
 		if area < config.MinAreaM2 {
 			runner.logger.Warnf(

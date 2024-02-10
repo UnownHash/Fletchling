@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/UnownHash/Fletchling/util"
 	"strconv"
 
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 
-	np_geo "github.com/UnownHash/Fletchling/geo"
+	"github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/koji_client"
 )
 
@@ -37,7 +36,7 @@ func looksLikeNumber(s string) bool {
 }
 
 func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojson.Feature, projects []int, geofencesByName map[string]*koji_client.Geofence, geofencesByNestId map[int64]*koji_client.Geofence) *koji_client.Geofence {
-	name, areaName, nestId, err := np_geo.NameAndIntIdFromFeature(feature)
+	name, areaName, nestId, err := geo.NameAndIntIdFromFeature(feature)
 	if err != nil {
 		importer.logger.Warnf("KojiImporter: skipping feature: %v", err)
 		return nil
@@ -62,7 +61,7 @@ func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojso
 			return name
 		}
 
-		featureCenter := util.GetPolygonLabelPoint(feature.Geometry)
+		featureCenter := geo.GetPolygonLabelPoint(feature.Geometry)
 
 		altName := name + fmt.Sprintf(" at %0.5f,%0.5f", featureCenter.Lat(), featureCenter.Lon())
 
