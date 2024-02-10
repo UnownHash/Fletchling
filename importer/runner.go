@@ -8,6 +8,7 @@ import (
 	orb_geo "github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/importer/exporters"
 	"github.com/UnownHash/Fletchling/importer/importers"
@@ -32,6 +33,19 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 	idx := 0
 
 	config := runner.config
+
+	fullNameFn := func(name string, areaName null.String) string {
+		if areaName.Valid {
+			return areaName.String + "/" + name
+		}
+		return name
+	}
+
+	var rtree *geo.FenceRTree[*geojson.Feature]
+
+	if !config.AllowContained {
+		rtree = geo.NewFenceRTree[*geojson.Feature]()
+	}
 
 	for _, feature := range baseFeatures {
 		if ctx.Err() != nil {
@@ -59,11 +73,7 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			continue
 		}
 
-		fullName := name
-		if areaName.Valid {
-			fullName = areaName.String + "/" + name
-		}
-
+		fullName := fullNameFn(name, areaName)
 		geometry := feature.Geometry
 		area := orb_geo.Area(geometry)
 
@@ -87,11 +97,53 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			continue
 		}
 
+		rtree.InsertGeometry(feature.Geometry, feature)
+
 		features[idx] = feature
 		idx++
 	}
 
 	features = features[:idx]
+
+	if rtree != nil {
+		nonOverlappingFeatures := make([]*geojson.Feature, len(features))
+		idx = 0
+		for _, feature := range features {
+			var skip bool
+
+			center := geo.GetPolygonLabelPoint(feature.Geometry)
+			matches := rtree.GetMatches(center.Lat(), center.Lon())
+			for _, match := range matches {
+				if match == feature {
+					// ourself.
+					continue
+				}
+
+				name, areaName, _, _ := geo.NameAndIntIdFromFeature(feature)
+				fullName := fullNameFn(name, areaName)
+
+				matchName, matchAreaName, _, _ := geo.NameAndIntIdFromFeature(match)
+				matchFullName := fullNameFn(matchName, matchAreaName)
+
+				runner.logger.Warnf(
+					"ImportRunner: skipping feature '%s': center at %0.5f,%0.5f appears contained by feature '%s'",
+					fullName,
+					center.Lat(),
+					center.Lon(),
+					matchFullName,
+				)
+				skip = true
+				break
+			}
+			if skip {
+				continue
+			}
+
+			nonOverlappingFeatures[idx] = feature
+			idx++
+		}
+		features = nonOverlappingFeatures[:idx]
+	}
 
 	return runner.importer.ImportFeatures(ctx, features)
 }

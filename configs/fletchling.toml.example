@@ -58,6 +58,10 @@ min_area_m2 = 100.0
 ## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
 max_area_m2 = 10000000.0
 
+## allow nests that are contained by other nests. upon startup or reload, if any
+## nests are found to be contained by other nests, they will be disabled.
+# allow_contained = false
+
 ## Whether to log the last stats period when processing (default false)
 ## This just dumps info about the single time period that just finished
 ## to the logs.

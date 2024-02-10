@@ -250,6 +250,14 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 		mgr.logger.Warnf("NEST-LOAD[]: No golbat DB configured. Missing spawnpoint counts in nests will not be able to be retrieved and will not be filtered")
 	}
 
+	var containsMatcher *NestMatcher
+	if !mgr.config.AllowContained {
+		containsMatcher = NewNestMatcher(mgr.logger, true)
+		for _, nest := range nests {
+			containsMatcher.AddNest(nest, nil)
+		}
+	}
+
 	for _, nest := range nests {
 		fullName := nest.FullName()
 
@@ -263,6 +271,36 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 			// shouldn't happen
 			mgr.logger.Warnf("NEST-LOAD[%s]: Nest already exists (skipping this one).", fullName)
 			continue
+		}
+
+		if containsMatcher != nil {
+			center := nest.Center
+			matches := containsMatcher.GetMatchingNests(0, center.Lat(), center.Lon())
+			for _, match := range matches {
+				if match == nest {
+					// ourself.
+					continue
+				}
+				mgr.logger.Warnf(
+					"NEST-LOAD[%s]: skipping nest due to appearing contained by nest '%s'",
+					fullName,
+					match.FullName(),
+				)
+				if !nest.Active {
+					continue
+				}
+				nest.Active = false
+				nest.Discarded = "overlap"
+				discarded := null.StringFrom(nest.Discarded)
+				zeroInt := null.IntFrom(0)
+				mgr.updateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
+					Active:      &nest.Active,
+					Discarded:   &discarded,
+					PokemonId:   &zeroInt,
+					PokemonForm: &zeroInt,
+				}, "disabling due to contains filter.")
+				continue
+			}
 		}
 
 		// do this before the spawnpoints query! Also do not save to db unless it's there already

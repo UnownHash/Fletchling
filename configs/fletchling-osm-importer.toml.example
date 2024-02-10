@@ -19,6 +19,8 @@ default_name = "Unknown Nest"
 # This defaults to false. Logs have this already and is kind of pointless on a map. But
 # since I added it (not sure why), I'll keep the option. Maybe someone wants it!
 default_name_location = false
+# Import nests that are fully contained by other nests.
+allow_contained = false
 
 ## Configure the source you'd like to use for your areas. This can be an
 ## areas.json (if it's a geojson feature collection) or a poracle style

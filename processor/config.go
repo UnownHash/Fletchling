@@ -26,12 +26,16 @@ const (
 type Config struct {
 	// Whether to log the last stats period when processing
 	LogLastStatsPeriod bool `koanf:"log_last_stats_period" json:"log_last_stats_period"`
+
 	// how many spawnpoints required in the geofence in order to track.
 	MinSpawnpoints int `koanf:"min_spawnpoints" json:"min_spawnpoints"`
 	// minimum area required in order to track.
 	MinAreaM2 float64 `koanf:"min_area_m2" json:"min_area_m2"`
 	// maximum area that cannot be exceeded in order to track.
 	MaxAreaM2 float64 `koanf:"max_area_m2" json:"max_area_m2"`
+	// allow nests contained by other nests.
+	AllowContained bool `koanf:"allow_contained" json:"allow_contained"`
+
 	// how often to rotate stats
 	RotationIntervalMinutes int `koanf:"rotation_interval_minutes" json:"rotation_interval_minutes"`
 	// Require this many horus of stats in order to produce the nesting pokemon and update the DB.
