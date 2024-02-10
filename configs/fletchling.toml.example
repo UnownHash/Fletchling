@@ -27,6 +27,15 @@ password = "password"
 #user = "username"
 #password = "password"
 
+## Poracle nest-change webhooks. You may configure more than one. Just
+## duplicate the whole [[webhooks]] entry.
+#[[webhooks]]
+#url = "http://localhost:4202"
+#headers = ["X-Poracle-Secret:abc", "Other-Header:def"]
+
+#[[webhooks]]
+#url = "http://localhost:4202"
+
 [http]
 ## http server listen address (default: 127.0.0.1:9042)
 ## If you run docker, change this to ":9042" or "0.0.0.0:9042"

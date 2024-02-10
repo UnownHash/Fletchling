@@ -1,4 +1,4 @@
-package main
+package app_config
 
 import (
 	"errors"
@@ -19,6 +19,7 @@ import (
 	"github.com/UnownHash/Fletchling/processor"
 	"github.com/UnownHash/Fletchling/pyroscope"
 	"github.com/UnownHash/Fletchling/stats_collector"
+	"github.com/UnownHash/Fletchling/webhook_sender"
 )
 
 type KojiConfig struct {
@@ -54,6 +55,9 @@ func (cfg *KojiConfig) Validate() error {
 type Config struct {
 	Processor processor.Config `koanf:"processor"`
 
+	Webhooks        webhook_sender.WebhooksConfig `koanf:"webhooks"`
+	WebhookSettings webhook_sender.SettingsConfig `koanf:"webhook_settings"`
+
 	Logging logging.Config    `koanf:"logging"`
 	HTTP    httpserver.Config `koanf:"http"`
 
@@ -77,6 +81,16 @@ func (cfg *Config) CreateLogger(rotate bool) *logrus.Logger {
 func (cfg *Config) Validate() error {
 	if err := cfg.Koji.Validate(); err != nil {
 		return err
+	}
+
+	if err := cfg.Webhooks.Validate(); err != nil {
+		return err
+	}
+
+	if len(cfg.Webhooks) > 0 {
+		if err := cfg.WebhookSettings.Validate(); err != nil {
+			return err
+		}
 	}
 
 	if err := cfg.Logging.Validate(); err != nil {
@@ -108,43 +122,42 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-var defaultConfig = Config{
-	Processor: processor.GetDefaultConfig(),
+func GetDefaultConfig() Config {
+	return Config{
+		Processor: processor.GetDefaultConfig(),
 
-	Logging: logging.Config{
-		Filename:   filepath.FromSlash("logs/fletchling.log"),
-		MaxSizeMB:  500,
-		MaxAgeDays: 7,
-		MaxBackups: 20,
-		Compress:   true,
-	},
-
-	HTTP: httpserver.Config{
-		Addr: "127.0.0.1:9042",
-	},
-
-	NestsDb: db_store.DBConfig{
-		Addr: "127.0.0.1:3306",
-		Db:   "fletchling",
-	},
-
-	Pyroscope: pyroscope.Config{
-		ApplicationName:      "fletchling",
-		MutexProfileFraction: 5,
-		BlockProfileRate:     5,
-	},
-
-	Prometheus: stats_collector.GetDefaultPrometheusConfig(),
-
-	/*
-		GolbatDb: db_store.DBConfig{
-			Addr: "127.0.0.1:3306",
-			Db:   "golbat",
+		WebhookSettings: webhook_sender.SettingsConfig{
+			FlushIntervalSeconds: 1,
 		},
-	*/
+
+		Logging: logging.Config{
+			Filename:   filepath.FromSlash("logs/fletchling.log"),
+			MaxSizeMB:  500,
+			MaxAgeDays: 7,
+			MaxBackups: 20,
+			Compress:   true,
+		},
+
+		HTTP: httpserver.Config{
+			Addr: "127.0.0.1:9042",
+		},
+
+		NestsDb: db_store.DBConfig{
+			Addr: "127.0.0.1:3306",
+			Db:   "fletchling",
+		},
+
+		Pyroscope: pyroscope.Config{
+			ApplicationName:      "fletchling",
+			MutexProfileFraction: 5,
+			BlockProfileRate:     5,
+		},
+
+		Prometheus: stats_collector.GetDefaultPrometheusConfig(),
+	}
 }
 
-func LoadConfig(filename string) (*Config, error) {
+func LoadConfig(filename string, defaultConfig Config) (*Config, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open '%s': %w", filename, err)

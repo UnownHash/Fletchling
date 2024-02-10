@@ -21,6 +21,10 @@ type NestLoader interface {
 	LoadNests(context.Context) ([]*models.Nest, error)
 }
 
+type WebhookSender interface {
+	AddNestWebhook(*models.Nest, *models.NestingPokemonInfo)
+}
+
 type NestProcessorManagerConfig struct {
 	Logger            *logrus.Logger
 	NestLoader        NestLoader
@@ -30,6 +34,7 @@ type NestProcessorManagerConfig struct {
 	KojiProjectName   string
 	NestingPokemonURL string
 	StatsCollector    stats_collector.StatsCollector
+	WebhookSender     WebhookSender
 }
 
 type NestProcessorManager struct {
@@ -40,6 +45,7 @@ type NestProcessorManager struct {
 	kojiCli         *koji_client.APIClient
 	kojiProjectName string
 	statsCollector  stats_collector.StatsCollector
+	webhookSender   WebhookSender
 
 	reloadCh    chan struct{}
 	reloadMutex sync.Mutex
@@ -384,7 +390,7 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 		nestsById[nest.Id] = nest
 	}
 
-	nestProcessor := NewNestProcessor(mgr.nestProcessor, mgr.logger, mgr.nestsDBStore, nestMatcher, nestsById, config)
+	nestProcessor := NewNestProcessor(mgr.nestProcessor, mgr.logger, mgr.nestsDBStore, nestMatcher, nestsById, mgr.webhookSender, config)
 	nestProcessor.LogConfiguration("Config loaded: ", len(nestsById))
 
 	// now we can swap in the new state
@@ -411,6 +417,7 @@ func NewNestProcessorManager(config NestProcessorManagerConfig) (*NestProcessorM
 		kojiProjectName: config.KojiProjectName,
 		nestLoader:      config.NestLoader,
 		statsCollector:  config.StatsCollector,
+		webhookSender:   config.WebhookSender,
 		reloadCh:        make(chan struct{}, 1),
 	}
 	return mgr, nil

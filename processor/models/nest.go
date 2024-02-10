@@ -134,7 +134,7 @@ type Nest struct {
 	Name        string
 	Center      orb.Point
 	Geometry    *geojson.Geometry
-	AreaName    *string
+	AreaName    null.String
 	Spawnpoints *int64
 	AreaM2      float64
 	Active      bool
@@ -147,8 +147,8 @@ type Nest struct {
 
 func (nest *Nest) FullName() string {
 	var namePrefix string
-	if nest.AreaName != nil {
-		namePrefix = *nest.AreaName + "/"
+	if nest.AreaName.Valid {
+		namePrefix = nest.AreaName.String + "/"
 	}
 	return fmt.Sprintf("%s%s(NestId:%d)", namePrefix, nest.Name, nest.Id)
 }
@@ -176,7 +176,7 @@ func (nest *Nest) AsDBStoreNest() *db_store.Nest {
 		Lon:         center.Lon(),
 		Name:        nest.Name,
 		Polygon:     polygon,
-		AreaName:    null.StringFromPtr(nest.AreaName),
+		AreaName:    nest.AreaName,
 		Spawnpoints: null.IntFromPtr(nest.Spawnpoints),
 		M2:          null.FloatFrom(nest.AreaM2),
 		Active:      null.BoolFrom(nest.Active),
@@ -240,18 +240,19 @@ func NestingPokemonInfoFromDBStore(dbNest *db_store.Nest) (*NestingPokemonInfo, 
 		// stats so much. If we already have this nest in memory, the current
 		// stats will be copied to it. If we're just starting up, we really only
 		// look at PokemonId,FormId to log when nesting mon changes.
-		count := dbNest.PokemonCount.ValueOrZero()
-		pct := dbNest.PokemonAvg.ValueOrZero()
+
+		hourlyAvg := dbNest.PokemonAvg.ValueOrZero()
+		pct := dbNest.PokemonRatio.ValueOrZero()
 		total := float64(0)
 		if pct > 0 {
-			total = 100 * count / pct
+			total = 100 * hourlyAvg / pct
 		}
 		ni := &NestingPokemonInfo{
 			PokemonKey: PokemonKey{
 				PokemonId: int(pokemonId),
 				FormId:    int(dbNest.PokemonForm.ValueOrZero()),
 			},
-			NestHourlyCount: count,
+			NestHourlyCount: hourlyAvg,
 			NestHourlyTotal: total,
 			DetectedAt:      updatedAtOrNow,
 			UpdatedAt:       updatedAtOrNow,
@@ -278,7 +279,7 @@ func NewNestFromDBStore(storeNest *db_store.Nest) (*Nest, error) {
 		Name:          storeNest.Name,
 		Center:        orb.Point{storeNest.Lon, storeNest.Lat},
 		Geometry:      geometry,
-		AreaName:      storeNest.AreaName.Ptr(),
+		AreaName:      storeNest.AreaName,
 		Spawnpoints:   storeNest.Spawnpoints.Ptr(),
 		AreaM2:        storeNest.M2.ValueOrZero(),
 		Active:        storeNest.Active.ValueOrZero(),
@@ -336,7 +337,7 @@ func NewNestFromKojiFeature(feature *geojson.Feature) (*Nest, error) {
 		Name:     name,
 		Center:   center,
 		Geometry: jsonGeometry,
-		AreaName: areaName.Ptr(),
+		AreaName: areaName,
 		AreaM2:   area,
 
 		// default to true
