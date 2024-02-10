@@ -258,6 +258,7 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 		}
 	}
 
+NestsLoop:
 	for _, nest := range nests {
 		fullName := nest.FullName()
 
@@ -287,7 +288,7 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 					match.FullName(),
 				)
 				if !nest.Active {
-					continue
+					continue NestsLoop
 				}
 				nest.Active = false
 				nest.Discarded = "overlap"
@@ -299,7 +300,7 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 					PokemonId:   &zeroInt,
 					PokemonForm: &zeroInt,
 				}, "disabling due to contains filter.")
-				continue
+				continue NestsLoop
 			}
 		}
 
