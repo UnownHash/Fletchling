@@ -70,8 +70,9 @@ type NestStatsInfo struct {
 	mutex sync.Mutex
 
 	// updatedAt here is used as the Updated time
-	// in the db when we write. So, only update this
-	// if we intend to update the mon in the DB.
+	// in the db when we write. It's inside this struct
+	// because we may be writing to it during stats
+	// processing and this is where we have the locking.
 	updatedAt      time.Time
 	nestingPokemon *NestingPokemonInfo
 }
@@ -147,7 +148,7 @@ type Nest struct {
 func (nest *Nest) FullName() string {
 	var namePrefix string
 	if nest.AreaName != nil {
-		namePrefix = *nest.AreaName + "/" + nest.Name
+		namePrefix = *nest.AreaName + "/"
 	}
 	return fmt.Sprintf("%s%s(NestId:%d)", namePrefix, nest.Name, nest.Id)
 }
@@ -224,12 +225,16 @@ func (nest *Nest) AsStorePartialUpdatePokemon(updatedAt time.Time) *db_store.Nes
 func NestingPokemonInfoFromDBStore(dbNest *db_store.Nest) (*NestingPokemonInfo, time.Time) {
 	// preserve nesting pokemon in DB if it looks ok. But if there's no Updated, set to
 	// now.
-	var updatedAt time.Time
-	if epoch := dbNest.Updated.ValueOrZero(); epoch <= 0 {
-		updatedAt = time.Now()
-	} else {
-		updatedAt = time.Unix(epoch, 0)
+	var dbUpdatedAt time.Time
+	if epoch := dbNest.Updated.ValueOrZero(); epoch > 0 {
+		dbUpdatedAt = time.Unix(epoch, 0)
 	}
+
+	updatedAtOrNow := dbUpdatedAt
+	if updatedAtOrNow.IsZero() {
+		updatedAtOrNow = time.Now()
+	}
+
 	if pokemonId := dbNest.PokemonId.ValueOrZero(); pokemonId > 0 {
 		// When we load existing nest from the DB, we don't care about the existing
 		// stats so much. If we already have this nest in memory, the current
@@ -248,12 +253,12 @@ func NestingPokemonInfoFromDBStore(dbNest *db_store.Nest) (*NestingPokemonInfo, 
 			},
 			NestHourlyCount: count,
 			NestHourlyTotal: total,
-			DetectedAt:      updatedAt,
-			UpdatedAt:       updatedAt,
+			DetectedAt:      updatedAtOrNow,
+			UpdatedAt:       updatedAtOrNow,
 		}
-		return ni, updatedAt
+		return ni, dbUpdatedAt
 	}
-	return nil, updatedAt
+	return nil, dbUpdatedAt
 }
 
 func NewNestFromDBStore(storeNest *db_store.Nest) (*Nest, error) {
