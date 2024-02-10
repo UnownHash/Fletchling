@@ -14,7 +14,6 @@ type FenceRTreeEntry[V any] struct {
 	polygon      orb.Polygon
 	multiPolygon orb.MultiPolygon
 	value        V
-	containsFn   func(orb.Point) bool
 }
 
 func (e FenceRTreeEntry[V]) polygonContains(p orb.Point) bool {
@@ -26,7 +25,10 @@ func (e FenceRTreeEntry[V]) multiPolygonContains(p orb.Point) bool {
 }
 
 func (e FenceRTreeEntry[V]) Contains(p orb.Point) bool {
-	return e.containsFn(p)
+	if e.polygon != nil {
+		return planar.PolygonContains(e.polygon, p)
+	}
+	return planar.MultiPolygonContains(e.multiPolygon, p)
 }
 
 type FenceRTree[V any] struct {
@@ -45,7 +47,6 @@ func (rt *FenceRTree[V]) insertPolygon(polygon orb.Polygon, value V) {
 		polygon: polygon,
 		value:   value,
 	}
-	entry.containsFn = entry.polygonContains
 	rt.insertEntry(polygon.Bound(), entry)
 }
 
@@ -54,7 +55,6 @@ func (rt *FenceRTree[V]) insertMultiPolygon(multiPolygon orb.MultiPolygon, value
 		multiPolygon: multiPolygon,
 		value:        value,
 	}
-	entry.containsFn = entry.multiPolygonContains
 	rt.insertEntry(multiPolygon.Bound(), entry)
 }
 

@@ -23,6 +23,7 @@ type APINest struct {
 	AreaM2         float64                    `json:"area_m2"`
 	Active         bool                       `json:"active,omitempty"`
 	Discarded      *string                    `json:"inactive_reason,omitempty"`
+	UpdatedAt      time.Time                  `json:"updated_at"`
 	NestingPokemon *models.NestingPokemonInfo `json:"nesting_pokemon"`
 }
 
@@ -41,7 +42,7 @@ func nestToAPINest(nest *models.Nest, includeGeometry bool) *APINest {
 		discarded = &nest.Discarded
 	}
 
-	ni, _ := nest.GetNestingPokemon()
+	ni, updatedAt := nest.GetNestingPokemon()
 
 	center := nest.Center
 	apiNest := &APINest{
@@ -54,11 +55,14 @@ func nestToAPINest(nest *models.Nest, includeGeometry bool) *APINest {
 		AreaM2:         nest.AreaM2,
 		Active:         nest.Active,
 		Discarded:      discarded,
+		UpdatedAt:      updatedAt,
 		NestingPokemon: ni,
 	}
+
 	if includeGeometry {
 		apiNest.Geometry = nest.Geometry
 	}
+
 	return apiNest
 }
 
