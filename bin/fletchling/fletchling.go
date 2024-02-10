@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	DEFAULT_CONFIG_FILENAME = "configs/fletchling.toml"
+	DEFAULT_CONFIG_FILENAME       = "configs/fletchling.toml"
+	DEFAULT_NESTS_MIGRATIONS_PATH = "./db_store/sql"
 )
 
 func main() {
@@ -65,7 +66,7 @@ func main() {
 
 	logger.Debugf("STARTUP: signal handler installed.")
 
-	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger)
+	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger, DEFAULT_NESTS_MIGRATIONS_PATH)
 	if err != nil {
 		logger.Fatalf("failed to create nests dbStore: %v", err)
 	}

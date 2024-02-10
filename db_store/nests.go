@@ -317,7 +317,7 @@ func (st *NestsDBStore) UpdateNestPartial(ctx context.Context, nestId int64, nes
 	return err
 }
 
-func NewNestsDBStore(config DBConfig, logger *logrus.Logger) (*NestsDBStore, error) {
+func NewNestsDBStore(config DBConfig, logger *logrus.Logger, migratePath string) (*NestsDBStore, error) {
 	db, err := sqlx.Connect("mysql", config.AsDSN())
 	if err != nil {
 		return nil, err
@@ -327,10 +327,10 @@ func NewNestsDBStore(config DBConfig, logger *logrus.Logger) (*NestsDBStore, err
 		db.SetMaxOpenConns(config.MaxPool)
 	}
 
-	if migratePath := config.MigrationsPath; migratePath == "" {
-		logger.Infof("skipping DB migrations: no path given")
+	if migratePath == "" {
+		logger.Infof("skipping nests_db migrations: no path given")
 	} else {
-		logger.Infof("running DB migrations")
+		logger.Infof("running nests_db migrations")
 		migrateConfig := &migrate_mysql.Config{
 			MigrationsTable: "nests_schema_migrations",
 			DatabaseName:    config.Db,

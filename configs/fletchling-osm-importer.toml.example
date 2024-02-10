@@ -14,8 +14,11 @@ max_area_m2 = 10000000
 # default name to use when no other name can be determined.
 # if you set this to "", nests with no names will be skipped.
 default_name = "Unknown Nest"
-# include the centroid in default name. For example, if true: "Unknown at 0.0000,0.0000"
-default_name_location = true
+# include the centroid in default_name. For example, if true: "Unknown Nest at 0.0000,0.0000"
+# 0.0000,0.0000 is just an example and is not going to be your actual centroid. :)
+# This defaults to false. Logs have this already and is kind of pointless on a map. But
+# since I added it (not sure why), I'll keep the option. Maybe someone wants it!
+default_name_location = false
 
 ## Configure the source you'd like to use for your areas. This can be an
 ## areas.json (if it's a geojson feature collection) or a poracle style
@@ -40,7 +43,6 @@ addr = "dbhost"
 db = "fletchling"
 user = "fletchling"
 password = "xxx"
-migrations = "./store_db/sql"
 
 ## golbat db is for spawnpoint filtering. This is optional, but the
 ## min_spawnpoint filtering will not be used if you do not have this.
