@@ -3,11 +3,11 @@ package importers
 import (
 	"context"
 	"encoding/json"
+	"github.com/UnownHash/Fletchling/util"
 	"time"
 
 	"github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/planar"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/guregu/null.v4"
 
@@ -77,7 +77,7 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 			updated = null.IntFrom(nowEpoch)
 		}
 
-		center, _ := planar.CentroidArea(geometry)
+		center := util.GetPolygonLabelPoint(geometry)
 
 		nest := &db_store.Nest{
 			NestId:    nestId,
