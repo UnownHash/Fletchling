@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/UnownHash/Fletchling/util"
 	"strconv"
 
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/planar"
 	"github.com/sirupsen/logrus"
 
 	np_geo "github.com/UnownHash/Fletchling/geo"
@@ -62,7 +62,8 @@ func (importer *KojiImporter) importFeature(ctx context.Context, feature *geojso
 			return name
 		}
 
-		featureCenter, _ := planar.CentroidArea(feature.Geometry)
+		featureCenter := util.GetPolygonLabelPoint(feature.Geometry)
+
 		altName := name + fmt.Sprintf(" at %0.5f,%0.5f", featureCenter.Lat(), featureCenter.Lon())
 
 		geofenceAlt := geofencesByName[altName]

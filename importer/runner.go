@@ -3,10 +3,9 @@ package importer
 import (
 	"context"
 	"fmt"
-
+	"github.com/UnownHash/Fletchling/util"
 	"github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/planar"
 	"github.com/sirupsen/logrus"
 
 	np_geo "github.com/UnownHash/Fletchling/geo"
@@ -46,7 +45,8 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			}
 			name = config.DefaultName
 			if config.DefaultNameLocation {
-				centroid, _ := planar.CentroidArea(feature.Geometry)
+				centroid := util.GetPolygonLabelPoint(feature.Geometry)
+
 				name += fmt.Sprintf(" at %0.5f,%0.5f", centroid.Lat(), centroid.Lon())
 			}
 			feature.Properties["name"] = name

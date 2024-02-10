@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/UnownHash/Fletchling/util"
 	"strconv"
 	"sync"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/paulmach/orb"
 	"github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
-	"github.com/paulmach/orb/planar"
 	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/db_store"
@@ -322,7 +322,8 @@ func NewNestFromKojiFeature(feature *geojson.Feature) (*Nest, error) {
 
 	geometry := feature.Geometry
 	jsonGeometry := geojson.NewGeometry(geometry)
-	center, _ := planar.CentroidArea(geometry)
+	center := util.GetPolygonLabelPoint(geometry)
+
 	area := geo.Area(geometry)
 
 	return &Nest{
