@@ -97,7 +97,9 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			continue
 		}
 
-		rtree.InsertGeometry(feature.Geometry, feature)
+		if rtree != nil {
+			rtree.InsertGeometry(feature.Geometry, feature)
+		}
 
 		features[idx] = feature
 		idx++
