@@ -5,7 +5,7 @@ WORKDIR /go/src/app
 
 COPY . .
 RUN if [ ! -f vendor/modules.txt ]; then go mod download; fi
-RUN CGO_ENABLED=0 go build -o /go/bin/fletchling ./bin/fletchling
+RUN CGO_ENABLED=0 go build -tags go_json -o /go/bin/fletchling ./bin/fletchling
 RUN CGO_ENABLED=0 go build -o /go/bin/fletchling-osm-importer ./bin/fletchling-osm-importer
 RUN mkdir /empty-dir
 
