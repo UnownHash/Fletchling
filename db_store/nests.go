@@ -317,6 +317,21 @@ func (st *NestsDBStore) UpdateNestPartial(ctx context.Context, nestId int64, nes
 	return err
 }
 
+func (st *NestsDBStore) DisableOverlappingNests(ctx context.Context, percent float64) (int64, error) {
+	const query = `
+        UPDATE nests SET active=0,discarded='overlap' WHERE nest_id IN (
+          SELECT b.nest_id
+          FROM nests a, nests b
+          WHERE a.active = 1 AND b.active = 1 AND a.m2 > b.m2 AND ST_Intersects(a.polygon, b.polygon) AND ST_Area(ST_Intersection(a.polygon,b.polygon)) / ST_Area(b.polygon) * 100 > ?
+		)`
+
+	res, err := st.db.ExecContext(ctx, query, percent)
+	if err == nil {
+		return res.RowsAffected()
+	}
+	return 0, err
+}
+
 func NewNestsDBStore(config DBConfig, logger *logrus.Logger, migratePath string) (*NestsDBStore, error) {
 	db, err := sqlx.Connect("mysql", config.AsDSN())
 	if err != nil {

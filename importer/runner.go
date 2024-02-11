@@ -41,9 +41,11 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		return name
 	}
 
+	var areas map[*geojson.Feature]float64
 	var rtree *geo.FenceRTree[*geojson.Feature]
 
 	if !config.AllowContained {
+		areas = make(map[*geojson.Feature]float64)
 		rtree = geo.NewFenceRTree[*geojson.Feature]()
 	}
 
@@ -99,6 +101,7 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 
 		if rtree != nil {
 			rtree.InsertGeometry(feature.Geometry, feature)
+			areas[feature] = area
 		}
 
 		features[idx] = feature
@@ -113,11 +116,12 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		for _, feature := range features {
 			var skip bool
 
+			this_area := areas[feature]
 			center := geo.GetPolygonLabelPoint(feature.Geometry)
 			matches := rtree.GetMatches(center.Lat(), center.Lon())
 			for _, match := range matches {
-				if match == feature {
-					// ourself.
+				if match == feature || areas[match] < this_area {
+					// ourself or smaller than us.
 					continue
 				}
 

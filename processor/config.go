@@ -33,8 +33,6 @@ type Config struct {
 	MinAreaM2 float64 `koanf:"min_area_m2" json:"min_area_m2"`
 	// maximum area that cannot be exceeded in order to track.
 	MaxAreaM2 float64 `koanf:"max_area_m2" json:"max_area_m2"`
-	// allow nests contained by other nests.
-	AllowContained bool `koanf:"allow_contained" json:"allow_contained"`
 
 	// how often to rotate stats
 	RotationIntervalMinutes int `koanf:"rotation_interval_minutes" json:"rotation_interval_minutes"`

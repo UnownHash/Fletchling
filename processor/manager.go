@@ -250,19 +250,19 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 		mgr.logger.Warnf("NEST-LOAD[]: No golbat DB configured. Missing spawnpoint counts in nests will not be able to be retrieved and will not be filtered")
 	}
 
-	var containsMatcher *NestMatcher
-	if !mgr.config.AllowContained {
-		containsMatcher = NewNestMatcher(mgr.logger, true)
-	}
-
-	nestsToKeep := make([]*models.Nest, 0)
-
 	for _, nest := range nests {
 		fullName := nest.FullName()
 
 		// area will be rechecked, other reasons we'll leave alone.
 		if !nest.Active && nest.Discarded != "area" {
 			mgr.logger.Warnf("NEST-LOAD[%s]: Nest is disabled (skipping this one).", fullName)
+			continue
+		}
+
+		if _, ok := nestsById[nest.Id]; ok {
+			// won't happen if nests come from DB. but possibly from other sources. we need
+			// the nestsById mapping anyway, so might as well check.
+			mgr.logger.Warnf("NEST-LOAD[%s]: Nest already exists (skipping this one).", fullName)
 			continue
 		}
 
@@ -361,47 +361,6 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 				Active:      &nest.Active,
 				Discarded:   &discarded,
 			}, "updating spawnpoints (if they were fetched) and enabling")
-		}
-
-		if containsMatcher != nil {
-			containsMatcher.AddNest(nest, nil)
-		}
-
-		nestsToKeep = append(nestsToKeep, nest)
-	}
-
-	nests = nestsToKeep
-NestsLoop:
-	for _, nest := range nests {
-		fullName := nest.FullName()
-		if containsMatcher != nil {
-			center := nest.Center
-			matches := containsMatcher.GetMatchingNests(0, center.Lat(), center.Lon())
-			for _, match := range matches {
-				if match == nest {
-					// ourself.
-					continue
-				}
-				mgr.logger.Warnf(
-					"NEST-LOAD[%s]: skipping nest due to appearing contained by nest '%s'",
-					fullName,
-					match.FullName(),
-				)
-				if !nest.Active {
-					continue NestsLoop
-				}
-				nest.Active = false
-				nest.Discarded = "overlap"
-				discarded := null.StringFrom(nest.Discarded)
-				zeroInt := null.IntFrom(0)
-				mgr.updateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-					Active:      &nest.Active,
-					Discarded:   &discarded,
-					PokemonId:   &zeroInt,
-					PokemonForm: &zeroInt,
-				}, "disabling due to contains filter.")
-				continue NestsLoop
-			}
 		}
 
 		if err := nestMatcher.AddNest(nest, nil); err != nil {
