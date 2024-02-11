@@ -1,7 +1,10 @@
 package httpserver
 
 import (
+	"net/http"
 	"net/http/pprof"
+	"runtime"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,26 +40,37 @@ func (srv *HTTPServer) setupRoutes() {
 	statsGroup.PUT("/purge/oldest", srv.handlePurgeOldestStats)
 	statsGroup.PUT("/purge/newest", srv.handlePurgeNewestStats)
 
-	debugGroup := r.Group("/debug/pprof")
-	debugGroup.GET("/cmdline", func(c *gin.Context) {
+	debugGroup := r.Group("/debug")
+	debugGroup.PUT("/gc-flush", func(c *gin.Context) {
+		now := time.Now()
+		runtime.GC()
+		resp := struct {
+			Message    string `json:"message"`
+			DurationMs int64  `json:"duration_ms"`
+		}{"garbage collector has been run", time.Now().Sub(now).Milliseconds()}
+		c.JSON(http.StatusOK, &resp)
+	})
+
+	pprofGroup := debugGroup.Group("/pprof")
+	pprofGroup.GET("/cmdline", func(c *gin.Context) {
 		pprof.Cmdline(c.Writer, c.Request)
 	})
-	debugGroup.GET("/heap", func(c *gin.Context) {
+	pprofGroup.GET("/heap", func(c *gin.Context) {
 		pprof.Index(c.Writer, c.Request)
 	})
-	debugGroup.GET("/block", func(c *gin.Context) {
+	pprofGroup.GET("/block", func(c *gin.Context) {
 		pprof.Index(c.Writer, c.Request)
 	})
-	debugGroup.GET("/mutex", func(c *gin.Context) {
+	pprofGroup.GET("/mutex", func(c *gin.Context) {
 		pprof.Index(c.Writer, c.Request)
 	})
-	debugGroup.GET("/trace", func(c *gin.Context) {
+	pprofGroup.GET("/trace", func(c *gin.Context) {
 		pprof.Trace(c.Writer, c.Request)
 	})
-	debugGroup.GET("/profile", func(c *gin.Context) {
+	pprofGroup.GET("/profile", func(c *gin.Context) {
 		pprof.Profile(c.Writer, c.Request)
 	})
-	debugGroup.GET("/symbol", func(c *gin.Context) {
+	pprofGroup.GET("/symbol", func(c *gin.Context) {
 		pprof.Symbol(c.Writer, c.Request)
 	})
 }
