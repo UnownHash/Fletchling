@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/guregu/null.v4"
@@ -92,6 +93,8 @@ func (wh *PokemonWebhook) EncounterIdAsInt() (uint64, error) {
 func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
 	var numProcessed int
 
+	now := time.Now()
+
 	for _, msg := range msgs {
 		pokemon := msg.Pokemon
 		if pokemon == nil {
@@ -131,7 +134,7 @@ func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
 		numProcessed++
 	}
 
-	srv.logger.Debugf("processed %d pokemon from single webhook", numProcessed)
+	srv.logger.Debugf("processed %d pokemon from single webhook in %s", numProcessed, time.Now().Sub(now).Truncate(time.Millisecond))
 }
 
 func (srv *HTTPServer) handleWebhook(c *gin.Context) {

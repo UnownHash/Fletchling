@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/UnownHash/Fletchling/pyroscope"
+
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/httpserver"
 	"github.com/UnownHash/Fletchling/koji_client"
@@ -42,6 +44,14 @@ func main() {
 	logger := cfg.CreateLogger(true)
 
 	logger.Infof("STARTUP: config loaded.")
+
+	if cfg.Pyroscope.ServerAddress != "" {
+		if err := pyroscope.Run(cfg.Pyroscope); err != nil {
+			logger.Error("STARTUP: Failed to Initialized pyroscope: %v", err)
+		} else {
+			logger.Info("STARTUP: Initialized pyroscope")
+		}
+	}
 
 	var wg sync.WaitGroup
 	defer wg.Wait()

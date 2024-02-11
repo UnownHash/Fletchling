@@ -17,6 +17,7 @@ import (
 	"github.com/UnownHash/Fletchling/httpserver"
 	"github.com/UnownHash/Fletchling/logging"
 	"github.com/UnownHash/Fletchling/processor"
+	"github.com/UnownHash/Fletchling/pyroscope"
 )
 
 type KojiConfig struct {
@@ -59,6 +60,8 @@ type Config struct {
 
 	NestsDb  db_store.DBConfig  `koanf:"nests_db"`
 	GolbatDb *db_store.DBConfig `koanf:"golbat_db"`
+
+	Pyroscope pyroscope.Config `koanf:"pyroscope"`
 }
 
 func (cfg *Config) CreateLogger(rotate bool) *logrus.Logger {
@@ -113,6 +116,12 @@ var defaultConfig = Config{
 	NestsDb: db_store.DBConfig{
 		Addr: "127.0.0.1:3306",
 		Db:   "fletchling",
+	},
+
+	Pyroscope: pyroscope.Config{
+		ApplicationName:      "fletchling",
+		MutexProfileFraction: 5,
+		BlockProfileRate:     5,
 	},
 
 	/*

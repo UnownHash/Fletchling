@@ -276,12 +276,12 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 			nest.Active = false
 			nest.Discarded = "area"
 			discarded := null.StringFrom(nest.Discarded)
-			zeroInt := null.IntFrom(0)
+			var nullInt null.Int
 			mgr.updateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
 				Active:      &nest.Active,
 				Discarded:   &discarded,
-				PokemonId:   &zeroInt,
-				PokemonForm: &zeroInt,
+				PokemonId:   &nullInt,
+				PokemonForm: &nullInt,
 			}, "disabling due to area filter.")
 			continue
 		}
@@ -329,13 +329,13 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 				nest.Active = false
 				nest.Discarded = "spawnpoints"
 				discarded := null.StringFrom(nest.Discarded)
-				zeroInt := null.IntFrom(0)
+				var nullInt null.Int
 				mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
 					Spawnpoints: nest.Spawnpoints,
 					Active:      &nest.Active,
 					Discarded:   &discarded,
-					PokemonId:   &zeroInt,
-					PokemonForm: &zeroInt,
+					PokemonId:   &nullInt,
+					PokemonForm: &nullInt,
 				}, "updating spawnpoints, disabling due to spawnpoints filter.")
 
 				continue
@@ -355,7 +355,7 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 		// update if !active in DB.. or if db didn't have spawnpoints but we have them now
 		if !nest.Active || (dbNeedsSpawnpoints && nest.Spawnpoints != nil) {
 			nest.Active = true
-			discarded := null.StringFrom(nest.Discarded)
+			var discarded null.String
 			mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
 				Spawnpoints: nest.Spawnpoints,
 				Active:      &nest.Active,
