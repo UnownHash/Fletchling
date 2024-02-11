@@ -309,6 +309,18 @@ func (stats *StatsCollection) keepRecentStats(keepDuration time.Duration) (int, 
 		counts = append(counts, NewCountsForTimePeriod(stats.logger, time.Now()))
 	}
 
+	// XXX: I'm curious if this will help a certain someone with a ton of nests.
+	// I feel like things are maybe not GCing, so maybe it's better to ditch
+	// the old slice here. If this is better, I'll refactor the above in 2 years.
+	if numPurged > 0 {
+		newCounts := make([]*CountsForTimePeriod, len(counts))
+		for idx, tpCounts := range counts {
+			newCounts[idx] = tpCounts
+			counts[idx] = nil
+		}
+		counts = newCounts
+	}
+
 	stats.CountsByTimePeriod = counts
 	stats.Totals.StartTime = counts[0].StartTime
 
