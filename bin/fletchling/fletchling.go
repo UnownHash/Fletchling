@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/UnownHash/Fletchling/pyroscope"
 	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/UnownHash/Fletchling/pyroscope"
 
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/httpserver"
@@ -44,10 +45,9 @@ func main() {
 
 	logger.Infof("STARTUP: config loaded.")
 
-	pyroscopeStatus := pyroscope.Run(cfg.Pyroscope)
-	if pyroscopeStatus.Started {
-		if pyroscopeStatus.Error != nil {
-			logger.Error("STARTUP: Failed to Initialized pyroscope")
+	if cfg.Pyroscope.ServerAddress != "" {
+		if err := pyroscope.Run(cfg.Pyroscope); err != nil {
+			logger.Error("STARTUP: Failed to Initialized pyroscope: %v", err)
 		} else {
 			logger.Info("STARTUP: Initialized pyroscope")
 		}
