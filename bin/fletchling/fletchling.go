@@ -44,9 +44,10 @@ func main() {
 
 	logger := cfg.CreateLogger(true)
 
-	logger.Infof("STARTUP: config loaded.")
+	logger.Info("STARTUP: config loaded.")
 
 	statsCollector := stats_collector.GetStatsCollector(cfg)
+	logger.Infof("STARTUP: using %s stats collector", statsCollector.Name())
 
 	if cfg.Pyroscope.ServerAddress != "" {
 		if err := pyroscope.Run(cfg.Pyroscope); err != nil {
