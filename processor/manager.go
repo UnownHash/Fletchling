@@ -13,6 +13,7 @@ import (
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/koji_client"
 	"github.com/UnownHash/Fletchling/processor/models"
+	"github.com/UnownHash/Fletchling/stats_collector"
 )
 
 type NestLoader interface {
@@ -28,6 +29,7 @@ type NestProcessorManagerConfig struct {
 	KojiClient        *koji_client.APIClient
 	KojiProjectName   string
 	NestingPokemonURL string
+	StatsCollector    stats_collector.StatsCollector
 }
 
 type NestProcessorManager struct {
@@ -37,6 +39,7 @@ type NestProcessorManager struct {
 	nestLoader      NestLoader
 	kojiCli         *koji_client.APIClient
 	kojiProjectName string
+	statsCollector  stats_collector.StatsCollector
 
 	reloadCh    chan struct{}
 	reloadMutex sync.Mutex
@@ -75,8 +78,13 @@ func (mgr *NestProcessorManager) GetNests() []*models.Nest {
 
 func (mgr *NestProcessorManager) ProcessPokemon(pokemon *models.Pokemon) {
 	resp := mgr.GetNestProcessor().AddPokemon(pokemon)
-	mgr.pokemonProcessedCount.Add(resp.NumPokemonProcessed)
+	mgr.pokemonProcessedCount.Add(1)
+	// webhook handler adds pokemon processed to statsCollector.
 	mgr.nestsMatchedCount.Add(resp.NumNestsMatched)
+	mgr.statsCollector.AddNestsMatched(resp.NumNestsMatched)
+	if resp.NumNestsMatched > 0 {
+		mgr.statsCollector.AddPokemonMatched(1)
+	}
 }
 
 func (mgr *NestProcessorManager) processStats(ctx context.Context, nestProcessor *NestProcessor) {
@@ -402,6 +410,7 @@ func NewNestProcessorManager(config NestProcessorManagerConfig) (*NestProcessorM
 		kojiCli:         config.KojiClient,
 		kojiProjectName: config.KojiProjectName,
 		nestLoader:      config.NestLoader,
+		statsCollector:  config.StatsCollector,
 		reloadCh:        make(chan struct{}, 1),
 	}
 	return mgr, nil

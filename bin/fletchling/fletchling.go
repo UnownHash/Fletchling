@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/UnownHash/Fletchling/pyroscope"
+	"github.com/UnownHash/Fletchling/stats_collector"
 
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/httpserver"
@@ -43,7 +44,10 @@ func main() {
 
 	logger := cfg.CreateLogger(true)
 
-	logger.Infof("STARTUP: config loaded.")
+	logger.Info("STARTUP: config loaded.")
+
+	statsCollector := stats_collector.GetStatsCollector(cfg)
+	logger.Infof("STARTUP: using %s stats collector", statsCollector.Name())
 
 	if cfg.Pyroscope.ServerAddress != "" {
 		if err := pyroscope.Run(cfg.Pyroscope); err != nil {
@@ -108,10 +112,11 @@ func main() {
 	logger.Debugf("STARTUP: koji client inited.")
 
 	processorManagerConfig := processor.NestProcessorManagerConfig{
-		Logger:        logger,
-		NestsDBStore:  nestsDBStore,
-		GolbatDBStore: golbatDBStore,
-		NestLoader:    nestLoader,
+		Logger:         logger,
+		NestsDBStore:   nestsDBStore,
+		GolbatDBStore:  golbatDBStore,
+		NestLoader:     nestLoader,
+		StatsCollector: statsCollector,
 	}
 
 	logger.Debugf("STARTUP: initializing processor.")
@@ -175,7 +180,7 @@ func main() {
 
 	logger.Debugf("STARTUP: processor started.")
 
-	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, reloadFn)
+	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, statsCollector, reloadFn)
 	if err != nil {
 		logger.Fatalf("failed to create http server: %v", err)
 	}

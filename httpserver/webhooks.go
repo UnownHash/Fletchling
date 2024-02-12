@@ -91,7 +91,7 @@ func (wh *PokemonWebhook) EncounterIdAsInt() (uint64, error) {
 }
 
 func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
-	var numProcessed int
+	var numProcessed uint64
 
 	now := time.Now()
 
@@ -134,6 +134,7 @@ func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
 		numProcessed++
 	}
 
+	srv.statsCollector.AddPokemonProcessed(numProcessed)
 	srv.logger.Debugf("processed %d pokemon from single webhook in %s", numProcessed, time.Now().Sub(now).Truncate(time.Millisecond))
 }
 

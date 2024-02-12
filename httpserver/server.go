@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/UnownHash/Fletchling/processor"
+	"github.com/UnownHash/Fletchling/stats_collector"
 )
 
 func init() {
@@ -21,6 +22,7 @@ type HTTPServer struct {
 	logger               *logrus.Logger
 	ginRouter            *gin.Engine
 	nestProcessorManager *processor.NestProcessorManager
+	statsCollector       stats_collector.StatsCollector
 	reloadFn             func() error
 }
 
@@ -65,15 +67,17 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 	}
 }
 
-func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, reloadFn func() error) (*HTTPServer, error) {
+func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, reloadFn func() error) (*HTTPServer, error) {
 	// Create the web server.
 	r := gin.New()
 	r.Use(gin.RecoveryWithWriter(logger.Writer()))
+	statsCollector.RegisterGinEngine(r)
 
 	srv := &HTTPServer{
 		logger:               logger,
 		ginRouter:            r,
 		nestProcessorManager: nestProcessorManager,
+		statsCollector:       statsCollector,
 		reloadFn:             reloadFn,
 	}
 
