@@ -11,8 +11,8 @@ import (
 )
 
 type AddPokemonStats struct {
-	NumPokemonProcessed uint64
-	NumNestsMatched     uint64
+	WasCounted      bool
+	NumNestsMatched uint64
 }
 
 // This is protected by the other structures using it and
@@ -140,13 +140,14 @@ func (tpCounts *CountsForTimePeriod) Duration() time.Duration {
 	return endTime.Sub(tpCounts.StartTime).Truncate(time.Minute)
 }
 
-func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) (resp AddPokemonStats) {
+// AddPokemon returns true if pokemon was added, false if stats were found to be frozen (shouldn't happen)
+func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) bool {
 	tpCounts.mutex.Lock()
 	defer tpCounts.mutex.Unlock()
 
 	if tpCounts.Frozen {
 		// only happens if we have a bug!
-		return
+		return false
 	}
 
 	pokemonKey := pokemon.Key()
@@ -163,10 +164,7 @@ func (tpCounts *CountsForTimePeriod) AddPokemon(pokemon *models.Pokemon, nests [
 		tpCounts.NestCounts[nest.Id] = nestCount
 	}
 
-	resp.NumPokemonProcessed++
-	resp.NumNestsMatched += uint64(len(nests))
-
-	return
+	return true
 }
 
 func (tpCounts *CountsForTimePeriod) GetOrderedGlobalPokemon() PokemonCountAndTotals {
@@ -405,7 +403,7 @@ func (stats *StatsCollection) Len() int {
 	return len(stats.CountsByTimePeriod)
 }
 
-func (stats *StatsCollection) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) AddPokemonStats {
+func (stats *StatsCollection) AddPokemon(pokemon *models.Pokemon, nests []*models.Nest) bool {
 	// Yes, we'll be writing, but this lock only protects rotation and purges.
 	// Each time period has its own locking that to protect its structures.
 	stats.mutex.RLock()
@@ -413,13 +411,13 @@ func (stats *StatsCollection) AddPokemon(pokemon *models.Pokemon, nests []*model
 
 	// there's always an entry
 	latest := stats.CountsByTimePeriod[len(stats.CountsByTimePeriod)-1]
-	resp := latest.AddPokemon(pokemon, nests)
-	if resp.NumPokemonProcessed == 0 {
+	wasCounted := latest.AddPokemon(pokemon, nests)
+	if !wasCounted {
 		stats.logger.Warnf("time period unexpectedly frozen when adding pokemon")
-		return resp
+		return false
 	}
 	stats.Totals.AddPokemon(pokemon, nests)
-	return resp
+	return true
 }
 
 func (stats *StatsCollection) GetSnapshot() *FrozenStatsCollection {

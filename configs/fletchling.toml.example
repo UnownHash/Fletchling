@@ -92,3 +92,8 @@ max_area_m2 = 10000000.0
 
 ## How many hours without seeing a nesting pokemon before we unset it in DB (default 12)
 # no_nesting_pokemon_age_hours = 12
+
+# Prometheus settings.
+[prometheus]
+## Uncomment to enable prometheus stats and corresponding /metrics endpoint
+#enabled = true
