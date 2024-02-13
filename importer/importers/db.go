@@ -41,7 +41,7 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 		geometry := feature.Geometry
 		area := orb_geo.Area(geometry)
 
-		existingNest, _ := importer.nestsDBStore.GetNestByID(ctx, nestId)
+		existingNest, _ := importer.nestsDBStore.GetNestById(ctx, nestId)
 
 		jsonGeometry := geojson.NewGeometry(geometry)
 

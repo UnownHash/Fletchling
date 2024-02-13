@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -12,7 +14,9 @@ import (
 
 	"github.com/UnownHash/Fletchling/pyroscope"
 	"github.com/UnownHash/Fletchling/stats_collector"
+	"github.com/UnownHash/Fletchling/webhook_sender"
 
+	"github.com/UnownHash/Fletchling/app_config"
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/httpserver"
 	"github.com/UnownHash/Fletchling/koji_client"
@@ -25,23 +29,50 @@ const (
 	DEFAULT_NESTS_MIGRATIONS_PATH = "./db_store/sql"
 )
 
-func main() {
-	var configFilename string
+func usage(flagSet *flag.FlagSet, output io.Writer) {
+	fmt.Fprintf(output, "Usage: %s [-debug] [-help] [-f <config-filename>]", os.Args[0])
+	fmt.Fprint(output, "\n")
+	fmt.Fprint(output, "Options:\n")
+	flagSet.SetOutput(output)
+	flagSet.PrintDefaults()
+	fmt.Fprint(output, "\n")
+}
 
-	switch len(os.Args) {
-	case 1:
-		configFilename = DEFAULT_CONFIG_FILENAME
-	case 2:
-		configFilename = os.Args[1]
-	default:
-		log.Fatalf("Usage: %s [<config-filename>]", os.Args[0])
+func main() {
+	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+
+	helpFlag := flagSet.Bool("help", false, "help!")
+	debugFlag := flagSet.Bool("debug", false, "override config and turn on debug logging")
+	flagSet.BoolVar(helpFlag, "h", false, "help!")
+	configFileFlag := flagSet.String("f", DEFAULT_CONFIG_FILENAME, "config file to use")
+
+	err := flagSet.Parse(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s", err)
+		usage(flagSet, os.Stderr)
+		os.Exit(2)
 	}
 
-	cfg, err := LoadConfig(configFilename)
+	if *helpFlag {
+		usage(flagSet, os.Stdout)
+		os.Exit(0)
+	}
+
+	if len(flagSet.Args()) != 0 {
+		usage(flagSet, os.Stderr)
+		os.Exit(1)
+	}
+
+	defaultConfig := app_config.GetDefaultConfig()
+	configFilename := *configFileFlag
+	cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	if *debugFlag {
+		cfg.Logging.Debug = true
+	}
 	logger := cfg.CreateLogger(true)
 
 	logger.Info("STARTUP: config loaded.")
@@ -101,15 +132,29 @@ func main() {
 
 	if cfg.Koji == nil {
 		nestLoader = nest_loader.NewDBNestLoader(logger, nestsDBStore)
+		logger.Debugf("STARTUP: nest loader (db) inited.")
 	} else {
 		kojiClient, err := koji_client.NewClient(logger, cfg.Koji.Url, cfg.Koji.Token)
 		if err != nil {
 			logger.Fatal(err)
 		}
+		logger.Debugf("STARTUP: koji client inited.")
 		nestLoader = nest_loader.NewKojiNestLoader(logger, kojiClient.APIClient, cfg.Koji.Project, nestsDBStore)
+		logger.Debugf("STARTUP: nest loader (koji) inited.")
 	}
 
-	logger.Debugf("STARTUP: koji client inited.")
+	var poracleWebhookSender *webhook_sender.PoracleSender
+	var webhookSender processor.WebhookSender
+
+	if len(cfg.Webhooks) > 0 {
+		poracleWebhookSender, err = webhook_sender.NewPoracleSender(logger, cfg.Webhooks, cfg.WebhookSettings)
+		if err != nil {
+			logger.Fatal(err)
+		}
+		webhookSender = poracleWebhookSender
+	} else {
+		webhookSender = webhook_sender.NewNoopSender()
+	}
 
 	processorManagerConfig := processor.NestProcessorManagerConfig{
 		Logger:         logger,
@@ -117,6 +162,7 @@ func main() {
 		GolbatDBStore:  golbatDBStore,
 		NestLoader:     nestLoader,
 		StatsCollector: statsCollector,
+		WebhookSender:  webhookSender,
 	}
 
 	logger.Debugf("STARTUP: initializing processor.")
@@ -133,7 +179,7 @@ func main() {
 	logger.Debugf("STARTUP: processor initialized.")
 
 	reloadFn := func() error {
-		cfg, err := LoadConfig(configFilename)
+		cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
 		if err != nil {
 			return fmt.Errorf("failed to reload config file: %w", err)
 		}
@@ -179,6 +225,19 @@ func main() {
 	}()
 
 	logger.Debugf("STARTUP: processor started.")
+
+	if poracleWebhookSender == nil {
+		logger.Debugf("STARTUP: Not starting webhook sender due to no webhooks configured.")
+	} else {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer cancelFn()
+
+			poracleWebhookSender.Run(ctx)
+			logger.Debugf("STARTUP: webhook sender started.")
+		}()
+	}
 
 	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, statsCollector, reloadFn)
 	if err != nil {

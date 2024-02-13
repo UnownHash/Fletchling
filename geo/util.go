@@ -81,6 +81,28 @@ func convertToVenisePolygon(orbPolygon orb.Polygon) venise_geo.Polygon {
 	return polygon
 }
 
+func GetLargestPolygon(mp orb.MultiPolygon) orb.Polygon {
+	switch len(mp) {
+	case 0:
+		return nil
+	case 1:
+		return mp[0]
+	}
+
+	bestPoly := mp[0]
+	maxArea := geo.Area(bestPoly)
+
+	for _, poly := range mp[1:] {
+		area := geo.Area(poly)
+		if area > maxArea {
+			maxArea = area
+			bestPoly = poly
+		}
+	}
+
+	return bestPoly
+}
+
 func GetPolygonLabelPoint(geometry orb.Geometry) orb.Point {
 	center, _ := planar.CentroidArea(geometry)
 	switch typedGeometry := geometry.(type) {
@@ -94,21 +116,36 @@ func GetPolygonLabelPoint(geometry orb.Geometry) orb.Point {
 			if len(typedGeometry) < 1 {
 				break
 			}
-
-			bestPoly := typedGeometry[0]
-			maxArea := geo.Area(bestPoly)
-
-			for _, poly := range typedGeometry[1:] {
-				area := geo.Area(poly)
-				if area > maxArea {
-					maxArea = area
-					bestPoly = poly
-				}
-			}
-
+			bestPoly := GetLargestPolygon(typedGeometry)
 			point := venise_geo.Polylabel(convertToVenisePolygon(bestPoly), 0.000001, false)
 			return orb.Point(point)
 		}
 	}
 	return center
+}
+
+func PathFromPolygonRing(ring orb.Ring) [][2]float64 {
+	path := make([][2]float64, len(ring))
+	for idx, pt := range ring {
+		path[idx] = [2]float64{pt[1], pt[0]}
+	}
+	return path
+}
+
+func PathFromGeometry(geometry orb.Geometry) [][][2]float64 {
+	switch typedGeometry := geometry.(type) {
+	case orb.Polygon:
+		return [][][2]float64{PathFromPolygonRing(typedGeometry[0])}
+	case orb.MultiPolygon:
+		if len(typedGeometry) == 0 {
+			return nil
+		}
+		polys := make([][][2]float64, len(typedGeometry))
+		for idx, poly := range typedGeometry {
+			polys[idx] = PathFromPolygonRing(poly[0])
+		}
+		return polys
+	default:
+		return nil
+	}
 }
