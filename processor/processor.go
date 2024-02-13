@@ -25,6 +25,7 @@ type NestProcessor struct {
 	nestIdsToNests map[int64]*models.Nest
 
 	statsCollection *StatsCollection
+	webhookSender   WebhookSender
 
 	config Config
 }
@@ -358,12 +359,14 @@ func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsColl
 				nest,
 				ni.PokemonKey,
 			)
+			np.webhookSender.AddNestWebhook(nest, ni)
 		} else if ni.PokemonKey != old_ni.PokemonKey {
 			np.logger.Infof("PROCESSOR[%s]: NEST-CHANGE: nesting pokemon has changed from %s to %s",
 				nest,
 				old_ni.PokemonKey,
 				ni.PokemonKey,
 			)
+			np.webhookSender.AddNestWebhook(nest, ni)
 		}
 
 		var nestToGlobalPctRatio float64
@@ -397,12 +400,13 @@ func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsColl
 	}
 }
 
-func NewNestProcessor(oldNestProcessor *NestProcessor, logger *logrus.Logger, nestsDBStore *db_store.NestsDBStore, nestMatcher *NestMatcher, nests map[int64]*models.Nest, config Config) *NestProcessor {
+func NewNestProcessor(oldNestProcessor *NestProcessor, logger *logrus.Logger, nestsDBStore *db_store.NestsDBStore, nestMatcher *NestMatcher, nests map[int64]*models.Nest, webhookSender WebhookSender, config Config) *NestProcessor {
 	nestProcessor := &NestProcessor{
 		logger:         logger,
 		nestsDBStore:   nestsDBStore,
 		nestMatcher:    nestMatcher,
 		nestIdsToNests: nests,
+		webhookSender:  webhookSender,
 		config:         config,
 	}
 	if oldNestProcessor == nil {

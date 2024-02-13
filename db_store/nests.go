@@ -88,7 +88,7 @@ func (st *NestsDBStore) InsertOrUpdateNest(ctx context.Context, nest *Nest) erro
 	return err
 }
 
-func (st *NestsDBStore) GetNestByID(ctx context.Context, nestId int64) (*Nest, error) {
+func (st *NestsDBStore) GetNestById(ctx context.Context, nestId int64) (*Nest, error) {
 	const query = "SELECT " + nestSelectColumns + " FROM nests WHERE nest_id=?"
 
 	row := st.db.QueryRowxContext(ctx, query, nestId)

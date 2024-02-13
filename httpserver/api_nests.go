@@ -50,7 +50,7 @@ func nestToAPINest(nest *models.Nest, includeGeometry bool) *APINest {
 		Name:           nest.Name,
 		Lat:            center.Lat(),
 		Lon:            center.Lon(),
-		AreaName:       nest.AreaName,
+		AreaName:       nest.AreaName.Ptr(),
 		Spawnpoints:    nest.Spawnpoints,
 		AreaM2:         nest.AreaM2,
 		Active:         nest.Active,
