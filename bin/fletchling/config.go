@@ -18,6 +18,7 @@ import (
 	"github.com/UnownHash/Fletchling/logging"
 	"github.com/UnownHash/Fletchling/processor"
 	"github.com/UnownHash/Fletchling/pyroscope"
+	"github.com/UnownHash/Fletchling/stats_collector"
 )
 
 type KojiConfig struct {
@@ -61,7 +62,12 @@ type Config struct {
 	NestsDb  db_store.DBConfig  `koanf:"nests_db"`
 	GolbatDb *db_store.DBConfig `koanf:"golbat_db"`
 
-	Pyroscope pyroscope.Config `koanf:"pyroscope"`
+	Pyroscope  pyroscope.Config                 `koanf:"pyroscope"`
+	Prometheus stats_collector.PrometheusConfig `koanf:"prometheus"`
+}
+
+func (cfg *Config) GetPrometheusConfig() stats_collector.PrometheusConfig {
+	return cfg.Prometheus
 }
 
 func (cfg *Config) CreateLogger(rotate bool) *logrus.Logger {
@@ -95,6 +101,10 @@ func (cfg *Config) Validate() error {
 		return err
 	}
 
+	if err := cfg.Prometheus.Validate(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -123,6 +133,8 @@ var defaultConfig = Config{
 		MutexProfileFraction: 5,
 		BlockProfileRate:     5,
 	},
+
+	Prometheus: stats_collector.GetDefaultPrometheusConfig(),
 
 	/*
 		GolbatDb: db_store.DBConfig{
