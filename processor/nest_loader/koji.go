@@ -23,7 +23,7 @@ func (*KojiNestLoader) LoaderName() string {
 }
 
 func (loader *KojiNestLoader) LoadNests(ctx context.Context) ([]*models.Nest, error) {
-	fc, err := loader.kojiCli.GetFeatureCollection(loader.projectName)
+	fc, err := loader.kojiCli.GetFeatureCollection(ctx, loader.projectName)
 	if err != nil {
 		return nil, err
 	}

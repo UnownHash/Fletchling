@@ -9,8 +9,8 @@ import (
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 
-	"github.com/UnownHash/Fletchling/importer/exporters"
-	"github.com/UnownHash/Fletchling/importer/importers"
+	"github.com/UnownHash/Fletchling/exporters"
+	"github.com/UnownHash/Fletchling/importers"
 )
 
 type ImportRunner struct {
@@ -34,8 +34,8 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 	config := runner.config
 
 	for _, feature := range baseFeatures {
-		if ctx.Err() != nil {
-			return ctx.Err()
+		if err := ctx.Err(); err != nil {
+			return err
 		}
 
 		if name, _ := feature.Properties["name"].(string); name == "" {
@@ -45,9 +45,8 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			}
 			name = config.DefaultName
 			if config.DefaultNameLocation {
-				centroid := geo.GetPolygonLabelPoint(feature.Geometry)
-
-				name += fmt.Sprintf(" at %0.5f,%0.5f", centroid.Lat(), centroid.Lon())
+				labelPoint := geo.GetPolygonLabelPoint(feature.Geometry)
+				name += fmt.Sprintf(" at %0.5f,%0.5f", labelPoint.Lat(), labelPoint.Lon())
 			}
 			feature.Properties["name"] = name
 		}
@@ -96,7 +95,7 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 	return runner.importer.ImportFeatures(ctx, features)
 }
 
-func NewImportRunner(config Config, logger *logrus.Logger, importer importers.Importer, exporter exporters.Exporter) (*ImportRunner, error) {
+func NewImportRunner(logger *logrus.Logger, config Config, importer importers.Importer, exporter exporters.Exporter) (*ImportRunner, error) {
 	runner := &ImportRunner{
 		logger:   logger,
 		config:   config,

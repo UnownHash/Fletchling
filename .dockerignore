@@ -1,2 +1,10 @@
+*~
+.dockerignore
+*.example
 /logs
 /.git
+/docker-compose.yml*
+/fletchling
+/fletchling-osm-importer
+/Makefile
+/configs

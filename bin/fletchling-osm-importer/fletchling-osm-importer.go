@@ -2,36 +2,37 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/paulmach/orb/geojson"
-	"github.com/sirupsen/logrus"
 
+	"github.com/UnownHash/Fletchling/app_config"
+	"github.com/UnownHash/Fletchling/areas"
 	"github.com/UnownHash/Fletchling/db_store"
-	"github.com/UnownHash/Fletchling/geo"
+	"github.com/UnownHash/Fletchling/exporters"
+	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/importer"
-	"github.com/UnownHash/Fletchling/importer/exporters"
-	"github.com/UnownHash/Fletchling/importer/importers"
-	"github.com/UnownHash/Fletchling/koji_client"
+	"github.com/UnownHash/Fletchling/importers"
 	"github.com/UnownHash/Fletchling/overpass"
+	"github.com/UnownHash/Fletchling/version"
 )
 
 const (
-	DEFAULT_CONFIG_FILENAME = "./configs/fletchling-osm-importer.toml"
+	LOGFILE_NAME                  = "fletchling-osm-importer.log"
+	DEFAULT_CONFIG_FILENAME       = "./configs/fletchling.toml"
+	DEFAULT_NESTS_MIGRATIONS_PATH = "./db_store/sql"
 )
 
 func usage(flagSet *flag.FlagSet, output io.Writer) {
-	fmt.Fprintf(output, "Usage: %s [-help] [-all-areas] [-f configfile] [<area-name>]\n", os.Args[0])
+	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **", version.APP_VERSION)
+	fmt.Fprintf(output, "Usage: %s [-help] [-debug] [-skip-activation] [-all-areas] [-f configfile] [<area-name>]\n", os.Args[0])
 	fmt.Fprint(output, "\n")
 	fmt.Fprintf(output, "%s is used to import data from overpass into your nests db. This is generally ", os.Args[0])
 	fmt.Fprint(output, "something you do once for all of your areas.\n")
@@ -53,59 +54,6 @@ func usage(flagSet *flag.FlagSet, output io.Writer) {
 	fmt.Fprint(output, "\n")
 }
 
-func featuresFromKoji(logger *logrus.Logger, urlStr, token string) ([]*geojson.Feature, error) {
-	// already checked by config validator
-	uri, _ := url.Parse(urlStr)
-
-	var baseUrl, project string
-
-	const fcStr = "/feature-collection/"
-	idx := strings.Index(uri.Path, fcStr)
-	if idx >= 0 {
-		// get base url and project
-		project = uri.Path[idx+len(fcStr):]
-		uri.Path = ""
-		baseUrl = uri.String()
-	}
-
-	if baseUrl == "" || project == "" {
-		return nil, errors.New("there's a problem with your koji url")
-	}
-
-	kojiCli, err := koji_client.NewAPIClient(logger, baseUrl, token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create koji client for area geofences: %v", err)
-	}
-
-	fc, err := kojiCli.GetFeatureCollection(project)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get area geofences from koji: %v", err)
-	}
-	return fc.Features, nil
-}
-
-func getImporter(cfg Config, logger *logrus.Logger) (importers.Importer, error) {
-	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDB, logger, "")
-	if err != nil {
-		logger.Errorf("failed to init db for db importer: %v", err)
-		os.Exit(1)
-	}
-
-	dbImporter, err := importers.NewDBImporter(logger, nestsDBStore)
-	if err != nil {
-		logger.Fatalf("failed to create db importer: %v", err)
-	}
-	return dbImporter, nil
-}
-
-func loadAreas(cfg Config, logger *logrus.Logger) ([]*geojson.Feature, error) {
-	if filename := cfg.Areas.Filename; filename != "" {
-		return geo.LoadFeaturesFromFile(filename)
-	} else {
-		return featuresFromKoji(logger, cfg.Areas.KojiUrl, cfg.Areas.KojiToken)
-	}
-}
-
 func main() {
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 
@@ -114,6 +62,7 @@ func main() {
 	flagSet.BoolVar(helpFlag, "h", false, "help!")
 	configFileFlag := flagSet.String("f", DEFAULT_CONFIG_FILENAME, "config file to use")
 	allAreasFlag := flagSet.Bool("all-areas", false, "import all areas found in your areas source")
+	skipActivateFlag := flagSet.Bool("skip-activation", false, "skips the final spawnpoint count gathering, filtering, and activation of new nests")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -142,53 +91,66 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg, err := LoadConfig(*configFileFlag)
+	defaultConfig := app_config.GetDefaultConfig()
+	configFilename := *configFileFlag
+
+	cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
+	cfg.Logging.Filename = LOGFILE_NAME
 
 	if *debugFlag {
 		cfg.Logging.Debug = true
 	}
+
 	logger := cfg.CreateLogger(true)
+	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
 
 	// check destination first before we attempt to load
 	// area fences.
-	importerImpl, err := getImporter(*cfg, logger)
+	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger)
 	if err != nil {
-		logger.Errorf("Error: couldn't create importer: %s", err)
-		logger.Errorf("Try %s -help for help.", os.Args[0])
+		logger.Errorf("failed to init nests db for db importer: %v", err)
 		os.Exit(1)
 	}
 
-	overpassAreas, err := loadAreas(*cfg, logger)
-	if len(overpassAreas) == 0 {
-		logger.Errorf("No areas were loaded/returned from source.")
-		logger.Errorf("Try %s -help for help.", os.Args[0])
+	if _, _, err := nestsDBStore.CheckMigrate(DEFAULT_NESTS_MIGRATIONS_PATH); err != nil {
+		logger.Errorf("error initing nests db: %v", err)
 		os.Exit(1)
 	}
 
-	if *allAreasFlag {
-		logger.Infof("%d area geofence(s) loaded from source", len(overpassAreas))
-	} else {
-		var overpassArea *geojson.Feature
+	importerImpl, err := importers.NewDBImporter(logger, nestsDBStore)
+	if err != nil {
+		logger.Errorf("Error: couldn't create importer: %v", err)
+		os.Exit(1)
+	}
 
-		areaName := args[0]
-		for _, feature := range overpassAreas {
-			if name, _ := feature.Properties["name"].(string); name != "" && name == areaName {
-				overpassArea = feature
-				break
+	areasLoader, err := areas.NewAreasLoader(logger, cfg.Areas)
+	if err != nil {
+		logger.Errorf("Error: couldn't create areas loader: %v", err)
+		os.Exit(1)
+	}
+
+	var dbRefresher *filters.DBRefresher
+
+	if !*skipActivateFlag {
+		var golbatDBStore *db_store.GolbatDBStore
+
+		if cfg.GolbatDb == nil {
+			logger.Warnf("Skipping spawnpoint count gathering and filtering: no golbat_db configured")
+		} else {
+			// check destination first before we attempt to load
+			// area fences.
+			var err error
+			golbatDBStore, err = db_store.NewGolbatDBStore(*cfg.GolbatDb, logger)
+			if err != nil {
+				logger.Errorf("failed to init golbat db for spawnpoint counts: %v", err)
+				os.Exit(1)
 			}
 		}
 
-		if overpassArea == nil {
-			logger.Fatalf("Area '%s' was not found in the source", areaName)
-		}
-
-		logger.Info("1 area geofence loaded from source")
-
-		overpassAreas[0] = overpassArea
-		overpassAreas = overpassAreas[:1]
+		dbRefresher = filters.NewDBRefresher(logger, nestsDBStore, golbatDBStore)
 	}
 
 	var wg sync.WaitGroup
@@ -212,6 +174,33 @@ func main() {
 		}
 	}()
 
+	if err := areasLoader.ReloadAreas(ctx); err != nil {
+		logger.Errorf("Failed to load areas: %v.", err)
+		os.Exit(1)
+	}
+
+	var overpassAreas []*geojson.Feature
+
+	if *allAreasFlag {
+		overpassAreas = areasLoader.GetAllAreas(ctx)
+		if len(overpassAreas) == 0 {
+			logger.Errorf("No areas were loaded/returned from source.")
+			os.Exit(1)
+		}
+		logger.Infof("%d area geofence(s) loaded from source", len(overpassAreas))
+	} else {
+		areaName := args[0]
+		overpassArea := areasLoader.GetArea(ctx, areaName)
+		if overpassArea == nil {
+			logger.Errorf("Could not find area '%s'", areaName)
+			os.Exit(1)
+		}
+
+		logger.Info("1 area geofence loaded from source")
+
+		overpassAreas = []*geojson.Feature{overpassArea}
+	}
+
 	for _, feature := range overpassAreas {
 		areaName, _ := feature.Properties["name"].(string)
 
@@ -227,7 +216,7 @@ func main() {
 
 		logger.Infof("Importing area %s...", areaName)
 
-		runner, err := importer.NewImportRunner(cfg.Importer, logger, importerImpl, exporterImpl)
+		runner, err := importer.NewImportRunner(logger, cfg.Importer, importerImpl, exporterImpl)
 		if err != nil {
 			logger.Fatal(err)
 		}
@@ -235,6 +224,23 @@ func main() {
 		err = runner.Import(ctx)
 		if err != nil {
 			logger.Fatal(err)
+		}
+	}
+
+	if dbRefresher != nil {
+		logger.Infof("Gathering missing spawnpoints, running filters, and activating/deactivating nests...")
+		refreshConfig := filters.RefreshNestConfig{
+			Concurrency:       cfg.Filters.Concurrency,
+			MinAreaM2:         cfg.Filters.MinAreaM2,
+			MaxAreaM2:         cfg.Filters.MaxAreaM2,
+			MinSpawnpoints:    cfg.Filters.MinSpawnpoints,
+			MaxOverlapPercent: cfg.Filters.MaxOverlapPercent,
+		}
+		err := dbRefresher.RefreshAllNests(ctx, refreshConfig)
+		if err == nil {
+			logger.Infof("Done activating/deactivating nests")
+		} else {
+			logger.Fatalf("failed to filter and activate/deactivate nests: %v", err)
 		}
 	}
 

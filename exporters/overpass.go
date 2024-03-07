@@ -135,14 +135,18 @@ func (exporter *OverpassExporter) ExportFeatures(ctx context.Context) ([]*geojso
 	return features, nil
 }
 
-func NewOverpassExporter(logger *logrus.Logger, overpassCli *overpass.Client, feature *geojson.Feature) (*OverpassExporter, error) {
-	bound := feature.Geometry.Bound()
-	parentName, _ := feature.Properties["name"].(string)
+func NewOverpassExporter(logger *logrus.Logger, overpassCli *overpass.Client, area *geojson.Feature) (*OverpassExporter, error) {
+	bound := area.Geometry.Bound()
+	areaName, _ := area.Properties["name"].(string)
+	parentName, _ := area.Properties["parent"].(string)
+	if parentName != "" && areaName != "" {
+		areaName = parentName + "/" + areaName
+	}
 
 	var polygonPtr *orb.Polygon
 	var multiPolygonPtr *orb.MultiPolygon
 
-	geometry := feature.Geometry
+	geometry := area.Geometry
 	switch typ := geometry.GeoJSONType(); typ {
 	case "Polygon":
 		polygon, ok := geometry.(orb.Polygon)
@@ -154,6 +158,8 @@ func NewOverpassExporter(logger *logrus.Logger, overpassCli *overpass.Client, fe
 		if ok {
 			multiPolygonPtr = &multiPolygon
 		}
+	default:
+		return nil, fmt.Errorf("area '%s' has unsupported geometry type '%s'", areaName, typ)
 	}
 
 	loader := &OverpassExporter{
@@ -162,7 +168,7 @@ func NewOverpassExporter(logger *logrus.Logger, overpassCli *overpass.Client, fe
 		parentPolygon:      polygonPtr,
 		parentMultiPolygon: multiPolygonPtr,
 		bound:              bound,
-		parentName:         parentName,
+		parentName:         areaName,
 	}
 	return loader, nil
 }

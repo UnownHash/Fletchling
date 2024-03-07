@@ -3,6 +3,7 @@ package importers
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	orb_geo "github.com/paulmach/orb/geo"
@@ -33,9 +34,9 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 			continue
 		}
 
-		fullName := name
+		fullName := fmt.Sprintf("%s(NestId %d)", name, nestId)
 		if areaName.Valid {
-			fullName = areaName.String + "/" + name
+			fullName = areaName.String + "/" + fullName
 		}
 
 		geometry := feature.Geometry
@@ -55,51 +56,52 @@ func (importer *DBImporter) ImportFeatures(ctx context.Context, features []*geoj
 			continue
 		}
 
-		var updated null.Int
-		var discarded null.String
-
-		active := null.BoolFrom(true)
-
-		if existingNest != nil {
-			// don't wipe out db area_name
-			if areaName.ValueOrZero() == "" {
-				areaName = existingNest.AreaName
-			}
-			updated = existingNest.Updated
-			active = existingNest.Active
-			if active.ValueOrZero() {
-				discarded = existingNest.Discarded
-			}
-		}
-
-		if updated.ValueOrZero() == 0 {
-			updated = null.IntFrom(nowEpoch)
-		}
-
 		center := geo.GetPolygonLabelPoint(geometry)
-
 		nest := &db_store.Nest{
-			NestId:    nestId,
-			Lat:       center.Lat(),
-			Lon:       center.Lon(),
-			Name:      name,
-			Polygon:   polygon,
-			AreaName:  areaName,
-			M2:        null.FloatFrom(area),
-			Active:    active,
-			Discarded: discarded,
-			Updated:   updated,
+			NestId:  nestId,
+			Lat:     center.Lat(),
+			Lon:     center.Lon(),
+			Name:    name,
+			Polygon: polygon,
+			M2:      null.FloatFrom(area),
 		}
 
 		if existingNest != nil {
+			nest.Active = existingNest.Active
+			nest.Updated = existingNest.Updated
+			nest.Discarded = existingNest.Discarded
+
 			// preserve the name, in case unknown names have been corrected.
 			nest.Name = existingNest.Name
 			nest.Spawnpoints = existingNest.Spawnpoints
-			nest.PokemonId = existingNest.PokemonId
-			nest.PokemonForm = existingNest.PokemonForm
-			nest.PokemonAvg = existingNest.PokemonAvg
-			nest.PokemonRatio = existingNest.PokemonRatio
-			nest.PokemonCount = existingNest.PokemonCount
+
+			if nest.Active.ValueOrZero() {
+				nest.PokemonId = existingNest.PokemonId
+				nest.PokemonForm = existingNest.PokemonForm
+				nest.PokemonAvg = existingNest.PokemonAvg
+				nest.PokemonRatio = existingNest.PokemonRatio
+				nest.PokemonCount = existingNest.PokemonCount
+			}
+
+			// prefer new areaName over DB
+			if areaName.ValueOrZero() == "" {
+				areaName = existingNest.AreaName
+			}
+		}
+
+		nest.AreaName = areaName
+		if nest.Active.ValueOrZero() {
+			nest.Discarded.Valid = false
+		} else {
+			// ensure !NULL
+			nest.Active = null.BoolFrom(false)
+			if !nest.Discarded.Valid {
+				nest.Discarded = null.StringFrom("unverified")
+			}
+		}
+
+		if nest.Updated.ValueOrZero() == 0 {
+			nest.Updated = null.IntFrom(nowEpoch)
 		}
 
 		err = importer.nestsDBStore.InsertOrUpdateNest(ctx, nest)

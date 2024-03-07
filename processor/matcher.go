@@ -1,7 +1,7 @@
 package processor
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 
@@ -10,33 +10,22 @@ import (
 )
 
 type NestMatcher struct {
-	logger      *logrus.Logger
-	nestsRtree  *geo.FenceRTree[*models.Nest]
-	spawnpoints map[uint64][]*models.Nest
-	nests       map[int64]struct{}
+	logger     *logrus.Logger
+	nestsRtree *geo.FenceRTree[*models.Nest]
+	nests      map[int64]*models.Nest
 }
 
-// GetMatchingNests returns nests that contain the given spawnpointId. There is no locking.
+// GetMatchingNests returns nests that contain the given lat, lon. There is no locking.
 // Returns nil if no nests match.
-func (matcher *NestMatcher) GetMatchingNests(spawnpointId uint64, lat, lon float64) []*models.Nest {
-	var nests []*models.Nest
-
-	if matcher.spawnpoints == nil || spawnpointId == 0 {
-		nests = matcher.nestsRtree.GetMatches(lat, lon)
-	} else {
-		nests = matcher.spawnpoints[spawnpointId]
-	}
-	if nests == nil {
-		return nil
-	}
-	return nests
+func (matcher *NestMatcher) GetMatchingNests(lat, lon float64) []*models.Nest {
+	return matcher.nestsRtree.GetMatches(lat, lon)
 }
 
-// AddNest stores a nest and its spawnpoints. There is no locking. There is no
-// deduping.
-func (matcher *NestMatcher) AddNest(nest *models.Nest, spawnpointIds []uint64) error {
+// AddNest stores a nest for later matching by lat/lon. There is no locking. If a
+// nest exists already with the same Id, an error will be returned.
+func (matcher *NestMatcher) AddNest(nest *models.Nest) error {
 	if _, ok := matcher.nests[nest.Id]; ok {
-		return errors.New("nest exists")
+		return fmt.Errorf("nest with id '%d' already exists", nest.Id)
 	}
 
 	err := matcher.nestsRtree.InsertGeometry(nest.Geometry.Geometry(), nest)
@@ -44,33 +33,36 @@ func (matcher *NestMatcher) AddNest(nest *models.Nest, spawnpointIds []uint64) e
 		return err
 	}
 
-	spawnpoints := matcher.spawnpoints
-
-	for _, spawnpointId := range spawnpointIds {
-		spawnpoints[spawnpointId] = append(
-			spawnpoints[spawnpointId],
-			nest,
-		)
-		if len(spawnpoints[spawnpointId]) > 1 {
-			matcher.logger.Warnf("MATCHER[%s]: nests overlap: spawnpointId %d matches existing nest %s", nest, spawnpointId, spawnpoints[spawnpointId][0])
-		}
-	}
-
-	matcher.nests[nest.Id] = struct{}{}
+	matcher.nests[nest.Id] = nest
 
 	return nil
 }
 
-func NewNestMatcher(logger *logrus.Logger, noSpawnpoints bool) *NestMatcher {
+func (matcher *NestMatcher) Len() int {
+	return len(matcher.nests)
+}
+
+// Returns a nest by its Id. There is no locking. Returns nil if nest is unknown.
+func (matcher *NestMatcher) GetNestById(nestId int64) *models.Nest {
+	return matcher.nests[nestId]
+}
+
+func (matcher *NestMatcher) GetAllNests() []*models.Nest {
+	// nests don't change once loaded into this object, so no locking.
+	nests := make([]*models.Nest, len(matcher.nests))
+	idx := 0
+	for _, nest := range matcher.nests {
+		nests[idx] = nest
+		idx++
+	}
+	return nests
+}
+
+func NewNestMatcher(logger *logrus.Logger) *NestMatcher {
 	matcher := &NestMatcher{
 		logger:     logger,
 		nestsRtree: geo.NewFenceRTree[*models.Nest](),
-		nests:      make(map[int64]struct{}),
+		nests:      make(map[int64]*models.Nest),
 	}
-
-	if !noSpawnpoints {
-		matcher.spawnpoints = make(map[uint64][]*models.Nest)
-	}
-
 	return matcher
 }

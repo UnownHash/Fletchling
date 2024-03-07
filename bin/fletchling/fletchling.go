@@ -12,24 +12,27 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/pyroscope"
 	"github.com/UnownHash/Fletchling/stats_collector"
+	"github.com/UnownHash/Fletchling/version"
 	"github.com/UnownHash/Fletchling/webhook_sender"
 
 	"github.com/UnownHash/Fletchling/app_config"
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/httpserver"
-	"github.com/UnownHash/Fletchling/koji_client"
 	"github.com/UnownHash/Fletchling/processor"
 	"github.com/UnownHash/Fletchling/processor/nest_loader"
 )
 
 const (
+	LOGFILE_NAME                  = "fletchling.log"
 	DEFAULT_CONFIG_FILENAME       = "configs/fletchling.toml"
 	DEFAULT_NESTS_MIGRATIONS_PATH = "./db_store/sql"
 )
 
 func usage(flagSet *flag.FlagSet, output io.Writer) {
+	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **", version.APP_VERSION)
 	fmt.Fprintf(output, "Usage: %s [-debug] [-help] [-f <config-filename>]", os.Args[0])
 	fmt.Fprint(output, "\n")
 	fmt.Fprint(output, "Options:\n")
@@ -69,20 +72,21 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	cfg.Logging.Filename = LOGFILE_NAME
 
 	if *debugFlag {
 		cfg.Logging.Debug = true
 	}
-	logger := cfg.CreateLogger(true)
 
-	logger.Info("STARTUP: config loaded.")
+	logger := cfg.CreateLogger(true)
+	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
 
 	statsCollector := stats_collector.GetStatsCollector(cfg)
 	logger.Infof("STARTUP: using %s stats collector", statsCollector.Name())
 
 	if cfg.Pyroscope.ServerAddress != "" {
 		if err := pyroscope.Run(cfg.Pyroscope); err != nil {
-			logger.Error("STARTUP: Failed to Initialized pyroscope: %v", err)
+			logger.Errorf("STARTUP: Failed to Initialized pyroscope: %v", err)
 		} else {
 			logger.Info("STARTUP: Initialized pyroscope")
 		}
@@ -111,9 +115,13 @@ func main() {
 
 	logger.Debugf("STARTUP: signal handler installed.")
 
-	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger, DEFAULT_NESTS_MIGRATIONS_PATH)
+	nestsDBStore, err := db_store.NewNestsDBStore(cfg.NestsDb, logger)
 	if err != nil {
 		logger.Fatalf("failed to create nests dbStore: %v", err)
+	}
+
+	if err := nestsDBStore.Migrate(DEFAULT_NESTS_MIGRATIONS_PATH); err != nil {
+		logger.Fatalf("failed to run nests db migrations: %v", err)
 	}
 
 	var golbatDBStore *db_store.GolbatDBStore
@@ -128,20 +136,14 @@ func main() {
 
 	logger.Debugf("STARTUP: store inited.")
 
-	var nestLoader processor.NestLoader
+	nestLoader := nest_loader.NewDBNestLoader(logger, nestsDBStore)
+	logger.Debugf("STARTUP: nest loader (db) inited.")
 
-	if cfg.Koji == nil {
-		nestLoader = nest_loader.NewDBNestLoader(logger, nestsDBStore)
-		logger.Debugf("STARTUP: nest loader (db) inited.")
-	} else {
-		kojiClient, err := koji_client.NewClient(logger, cfg.Koji.Url, cfg.Koji.Token)
-		if err != nil {
-			logger.Fatal(err)
-		}
-		logger.Debugf("STARTUP: koji client inited.")
-		nestLoader = nest_loader.NewKojiNestLoader(logger, kojiClient.APIClient, cfg.Koji.Project, nestsDBStore)
-		logger.Debugf("STARTUP: nest loader (koji) inited.")
-	}
+	dbRefresher := filters.NewDBRefresher(
+		logger,
+		nestsDBStore,
+		golbatDBStore,
+	)
 
 	var poracleWebhookSender *webhook_sender.PoracleSender
 	var webhookSender processor.WebhookSender
@@ -178,6 +180,15 @@ func main() {
 
 	logger.Debugf("STARTUP: processor initialized.")
 
+	var filtersConfigMutex sync.Mutex
+	filtersConfig := cfg.Filters
+
+	getFiltersConfigFn := func() filters.Config {
+		filtersConfigMutex.Lock()
+		defer filtersConfigMutex.Unlock()
+		return filtersConfig
+	}
+
 	reloadFn := func() error {
 		cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
 		if err != nil {
@@ -187,6 +198,9 @@ func main() {
 		if err != nil {
 			return fmt.Errorf("failed to reload processor manager: %w", err)
 		}
+		filtersConfigMutex.Lock()
+		defer filtersConfigMutex.Unlock()
+		filtersConfig = cfg.Filters
 		return nil
 	}
 
@@ -239,7 +253,7 @@ func main() {
 		}()
 	}
 
-	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, statsCollector, reloadFn)
+	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, statsCollector, dbRefresher, reloadFn, getFiltersConfigFn)
 	if err != nil {
 		logger.Fatalf("failed to create http server: %v", err)
 	}

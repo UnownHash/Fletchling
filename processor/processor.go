@@ -21,8 +21,7 @@ type NestProcessor struct {
 	logger       *logrus.Logger
 	nestsDBStore *db_store.NestsDBStore
 
-	nestMatcher    *NestMatcher
-	nestIdsToNests map[int64]*models.Nest
+	nestMatcher *NestMatcher
 
 	statsCollection *StatsCollection
 	webhookSender   WebhookSender
@@ -41,7 +40,7 @@ func (np *NestProcessor) LogConfiguration(prefix string, numNests int) {
 }
 
 func (np *NestProcessor) AddPokemon(pokemon *models.Pokemon) AddPokemonStats {
-	nests := np.nestMatcher.GetMatchingNests(pokemon.SpawnpointId, pokemon.Lat, pokemon.Lon)
+	nests := np.nestMatcher.GetMatchingNests(pokemon.Lat, pokemon.Lon)
 	wasCounted := np.statsCollection.AddPokemon(pokemon, nests)
 	return AddPokemonStats{
 		WasCounted:      wasCounted,
@@ -189,8 +188,8 @@ func (np *NestProcessor) processTimePeriodSummary(summary models.NestTimePeriodS
 	// Or it might be interesting to look at the top 2 choices and compare those. Or
 	// some sort of scoring system.
 	for idx, pokStats := range summary.PokemonCountsAndTotals {
-		// XXX stop at 15 pokemon -- make configurable.
-		if idx > 14 {
+		// stop at 10 pokemon
+		if idx > 9 {
 			if logPrefix != "" {
 				np.logger.Infof(
 					"%s NEST [%s] Stopping at %d out of %d pokemon",
@@ -225,8 +224,8 @@ func (np *NestProcessor) logLatestEntry(lastEntry *CountsForTimePeriod) {
 	)
 
 	for nestId := range lastEntry.NestCounts {
-		nest, ok := np.nestIdsToNests[nestId]
-		if !ok {
+		nest := np.GetNestById(nestId)
+		if nest == nil {
 			// a reload happened and nest was removed
 			np.logger.Warnf("LAST-PERIOD: Ignoring missing nest %d", nestId)
 			continue
@@ -244,20 +243,13 @@ func (np *NestProcessor) GetConfig() Config {
 	return np.config
 }
 
-func (np *NestProcessor) GetNestByID(nestId int64) *models.Nest {
+func (np *NestProcessor) GetNestById(nestId int64) *models.Nest {
 	// nests don't change once loaded into this object, so no locking.
-	return np.nestIdsToNests[nestId]
+	return np.nestMatcher.GetNestById(nestId)
 }
 
 func (np *NestProcessor) GetNests() []*models.Nest {
-	// nests don't change once loaded into this object, so no locking.
-	nests := make([]*models.Nest, len(np.nestIdsToNests))
-	idx := 0
-	for _, nest := range np.nestIdsToNests {
-		nests[idx] = nest
-		idx++
-	}
-	return nests
+	return np.nestMatcher.GetAllNests()
 }
 
 func (np *NestProcessor) GetStatsSnapshot() *FrozenStatsCollection {
@@ -265,7 +257,7 @@ func (np *NestProcessor) GetStatsSnapshot() *FrozenStatsCollection {
 }
 
 func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsCollection) {
-	np.LogConfiguration("PROCESSOR: time period processing starting with configuration: ", len(np.nestIdsToNests))
+	np.LogConfiguration("PROCESSOR: time period processing starting with configuration: ", np.nestMatcher.Len())
 	defer np.logger.Infof("PROCESSOR: time period processing ending")
 
 	totals := statsCollection.Totals
@@ -298,10 +290,10 @@ func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsColl
 
 	logPrefix := fmt.Sprintf("ALL-PERIODS(%d):", statsCollection.Len())
 	for nestId := range totals.NestCounts {
-		nest, ok := np.nestIdsToNests[nestId]
-		if !ok {
+		nest := np.nestMatcher.GetNestById(nestId)
+		if nest == nil {
 			// a reload happened and nest was removed
-			np.logger.Warnf("PROCESSOR: Ignoring missing nest %s", nestId)
+			np.logger.Warnf("PROCESSOR: Ignoring missing nest %d", nestId)
 			continue
 		}
 
@@ -400,14 +392,13 @@ func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsColl
 	}
 }
 
-func NewNestProcessor(oldNestProcessor *NestProcessor, logger *logrus.Logger, nestsDBStore *db_store.NestsDBStore, nestMatcher *NestMatcher, nests map[int64]*models.Nest, webhookSender WebhookSender, config Config) *NestProcessor {
+func NewNestProcessor(oldNestProcessor *NestProcessor, logger *logrus.Logger, nestsDBStore *db_store.NestsDBStore, nestMatcher *NestMatcher, webhookSender WebhookSender, config Config) *NestProcessor {
 	nestProcessor := &NestProcessor{
-		logger:         logger,
-		nestsDBStore:   nestsDBStore,
-		nestMatcher:    nestMatcher,
-		nestIdsToNests: nests,
-		webhookSender:  webhookSender,
-		config:         config,
+		logger:        logger,
+		nestsDBStore:  nestsDBStore,
+		nestMatcher:   nestMatcher,
+		webhookSender: webhookSender,
+		config:        config,
 	}
 	if oldNestProcessor == nil {
 		// startup.

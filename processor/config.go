@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	DEFAULT_MIN_SPAWNPOINTS                  = 10
 	DEFAULT_ROTATION_INTERVAL_MINUTES        = 15
 	DEFAULT_MIN_HISTORY_DURATION_HOURS       = 1
 	DEFAULT_MAX_HISTORY_DURATION_HOURS       = 12
@@ -18,8 +17,6 @@ const (
 	DEFAULT_MIN_NEST_PCT_TO_GLOBAL_PCT_RATIO = float64(8)
 	DEFAULT_SKIP_PERIOD_MIN_GLOBAL_SPAWN_PCT = float64(40)
 	DEFAULT_LOG_LAST_STATS_PERIOD            = false
-	DEFAULT_MIN_AREA                         = float64(100)
-	DEFAULT_MAX_AREA                         = float64(10000000)
 	DEFAULT_NO_NESTING_POKEMON_AGE_HOURS     = 12
 )
 
@@ -90,9 +87,6 @@ func (cfg *Config) NoNestingPokemonAge() time.Duration {
 func GetDefaultConfig() Config {
 	return Config{
 		LogLastStatsPeriod:          DEFAULT_LOG_LAST_STATS_PERIOD,
-		MinSpawnpoints:              DEFAULT_MIN_SPAWNPOINTS,
-		MinAreaM2:                   DEFAULT_MIN_AREA,
-		MaxAreaM2:                   DEFAULT_MAX_AREA,
 		RotationIntervalMinutes:     DEFAULT_ROTATION_INTERVAL_MINUTES,
 		MinHistoryDurationHours:     DEFAULT_MIN_HISTORY_DURATION_HOURS,
 		MaxHistoryDurationHours:     DEFAULT_MAX_HISTORY_DURATION_HOURS,
@@ -107,10 +101,6 @@ func GetDefaultConfig() Config {
 }
 
 func (cfg *Config) Validate() error {
-	if val := cfg.MinSpawnpoints; val < 1 {
-		return fmt.Errorf("min_spawnpoints should probably be at least 1, not %d", val)
-	}
-
 	if val := cfg.RotationIntervalMinutes; val < 1 {
 		return fmt.Errorf("invalid rotation_interval_minutes '%d': must be > 0", val)
 	}

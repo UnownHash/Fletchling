@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/koji_client"
@@ -74,8 +73,8 @@ func (mgr *NestProcessorManager) GetConfig() Config {
 	return mgr.GetNestProcessor().GetConfig()
 }
 
-func (mgr *NestProcessorManager) GetNestByID(nestId int64) *models.Nest {
-	return mgr.GetNestProcessor().GetNestByID(nestId)
+func (mgr *NestProcessorManager) GetNestById(nestId int64) *models.Nest {
+	return mgr.GetNestProcessor().GetNestById(nestId)
 }
 
 func (mgr *NestProcessorManager) GetNests() []*models.Nest {
@@ -182,216 +181,67 @@ func (mgr *NestProcessorManager) Run(ctx context.Context) {
 	}
 }
 
-func (mgr *NestProcessorManager) updateNestInDb(ctx context.Context, nest *models.Nest, partial *db_store.NestPartialUpdate, msg string) error {
-	fullName := nest.FullName()
-
-	if nest.ExistsInDb {
-		if partial == nil {
-			return nil
-		}
-		if partial.Updated == nil {
-			now := time.Now()
-			nest.SetUpdatedAt(now)
-			nowInt := null.IntFrom(now.Unix())
-			partial.Updated = &nowInt
-		}
-		mgr.logger.Infof("NEST-LOAD[%s]: Updating nest in DB: %s", fullName, msg)
-		err := mgr.nestsDBStore.UpdateNestPartial(ctx, nest.Id, partial)
-		if err != nil {
-			mgr.logger.Infof("NEST-LOAD[%s]: Failed to updating nest in DB: %s: %v", fullName, msg, err)
-		}
-		return err
-	}
-	return nil
-}
-
-func (mgr *NestProcessorManager) addOrUpdateNestInDb(ctx context.Context, nest *models.Nest, partial *db_store.NestPartialUpdate, msg string) error {
-	if nest.SyncedToDb {
-		return mgr.updateNestInDb(ctx, nest, partial, msg)
-	}
-	// came from a non-DB source. Sync up with DB.
-
-	fullName := nest.FullName()
-	mgr.logger.Infof("NEST-LOAD[%s]: Saving/Updating non-DB-sourced nest to DB", fullName)
-
-	nest.SetUpdatedAt(time.Now())
-	dbNest := nest.AsDBStoreNest()
-	if err := mgr.nestsDBStore.InsertOrUpdateNest(ctx, dbNest); err == nil {
-		nest.SyncedToDb = true
-		nest.ExistsInDb = true
-	} else {
-		mgr.logger.Warnf("NEST-LOAD[%s]: Failed to insert/update non-DB-sourced nest to DB: %v", fullName, err)
-		return err
-	}
-	return nil
-}
-
-// LoadConfig queries the db (or koji merged with db) for the geofences
-// to use, filters them (min spawnpoints), etc, and sets up a new NestProcessor
-// for them. The stats and some state will be preserved if there was an existing
-// NestProcessor. LoadConfig() is used for both the initial configuration load as
-// well as reloads.
-// When an error occurs during reload, the previous configuration continues
-// running.
+// LoadConfig loads all active nests from the nests db and sets up a new
+// NestProcessor for them. No filtering is performed. Whatever is active
+// in the DB will be loaded.
+// LoadConfig is used for both the initial configuration load as well as
+// reloads.
+// If this is a reload, any nests that were already active will have the
+// existing stats copied to these freshly loaded nests.
+// Any errors that occur during reload will not affect the running processing.
 //
 // A config must be loaded prior to calling Run().
 func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) error {
+	// allow only 1 reload at a time. While mgr.nestProcessor has its own lock, it
+	// can never change without holding the reloadMutex, so we can access it safely.
+	// If reload succeeds, we'll grab the other lock to replace mgr.nestProcessor.
 	mgr.reloadMutex.Lock()
 	defer mgr.reloadMutex.Unlock()
 
-	filter := Filter{
-		MinSpawnpoints: int64(config.MinSpawnpoints),
-		MinArea:        config.MinAreaM2,
-		MaxArea:        config.MaxAreaM2,
-	}
-
-	// nests will be filtered here.
-	nests, err := mgr.nestLoader.LoadNests(ctx)
+	dbNests, err := mgr.nestsDBStore.GetActiveNests(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load nests: %w", err)
+		return fmt.Errorf("failed to load active nests from the DB: %w", err)
 	}
 
-	mgr.logger.Infof("NEST-LOAD[]: Got %d nest(s) from loader", len(nests))
+	mgr.logger.Infof("NEST-LOAD[]: Loaded %d active nest(s) from the DB", len(dbNests))
 
-	nestsById := make(map[int64]*models.Nest)
-
-	// first load all of the geofences into a new matcher. No spawnpoint caching anymore.
-	nestMatcher := NewNestMatcher(mgr.logger, true)
-
+	nestMatcher := NewNestMatcher(mgr.logger)
 	curNestProcessor := mgr.nestProcessor
 
-	if mgr.golbatDBStore == nil {
-		mgr.logger.Warnf("NEST-LOAD[]: No golbat DB configured. Missing spawnpoint counts in nests will not be able to be retrieved and will not be filtered")
-	}
-
-	for _, nest := range nests {
-		fullName := nest.FullName()
-
-		// area will be rechecked, other reasons we'll leave alone.
-		if !nest.Active && nest.Discarded != "area" {
-			mgr.logger.Warnf("NEST-LOAD[%s]: Nest is disabled (skipping this one).", fullName)
+	for _, dbNest := range dbNests {
+		nest, err := models.NewNestFromDBStore(dbNest)
+		if err != nil {
+			mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest id '%d': %v", dbNest.Name, dbNest.NestId, err)
 			continue
-		}
-
-		if _, ok := nestsById[nest.Id]; ok {
-			// shouldn't happen
-			mgr.logger.Warnf("NEST-LOAD[%s]: Nest already exists (skipping this one).", fullName)
-			continue
-		}
-
-		// do this before the spawnpoints query! Also do not save to db unless it's there already
-		// and set to Active. Only update active/discarded.
-		if err := filter.FilterArea(nest.AreaM2); err != nil {
-			mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest due to filter: %s", fullName, err)
-			if !nest.Active {
-				continue
-			}
-			nest.Active = false
-			nest.Discarded = "area"
-			discarded := null.StringFrom(nest.Discarded)
-			var nullInt null.Int
-			mgr.updateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-				Active:      &nest.Active,
-				Discarded:   &discarded,
-				PokemonId:   &nullInt,
-				PokemonForm: &nullInt,
-			}, "disabling due to area filter.")
-			continue
-		}
-
-		_, dbUpdatedAt := nest.GetNestingPokemon()
-
-		dbNeedsSpawnpoints := nest.Spawnpoints == nil
-		// The spawnpoints column has a DEFAULT 0. Depending on how they are inserted initially,
-		// the default may have been used. But the default for Updated is NULL, so we can use
-		// that, also. This ends up as a zero time in the Nest model.
-		if !dbNeedsSpawnpoints && *nest.Spawnpoints == 0 && dbUpdatedAt.IsZero() {
-			nest.Spawnpoints = nil
-			dbNeedsSpawnpoints = true
-		}
-
-		if dbUpdatedAt.IsZero() {
-			dbUpdatedAt = time.Now()
-		}
-
-		if dbNeedsSpawnpoints && mgr.golbatDBStore != nil {
-			mgr.logger.Infof("NEST-LOAD[%s]: number of spawnpoints is unknown. Will query golbat for them.", fullName)
-
-			numSpawnpoints, err := mgr.golbatDBStore.GetSpawnpointsCount(ctx, nest.Geometry)
-			if err == nil {
-				nest.Spawnpoints = &numSpawnpoints
-			} else {
-				mgr.logger.Warnf("NEST-LOAD[%s]: couldn't query spawnpoints: %#v", fullName, err)
-			}
-		}
-
-		if nest.Spawnpoints == nil {
-			mgr.logger.Warnf("NEST-LOAD[%s]: allowing nest with unknown number of spawnpoints due to no golbat DB config or query error", fullName)
-		} else {
-			if err := filter.FilterSpawnpoints(*nest.Spawnpoints); err != nil {
-				mgr.logger.Warnf("NEST-LOAD[%s]: skipping nest: %s", fullName, err)
-
-				// update only if the nest WAS active... or if we didn't
-				// have the number of spawnpoints before.
-				if !nest.Active && !dbNeedsSpawnpoints {
-					continue
-				}
-
-				// go ahead and store the current spawnpoints so we won't
-				// query again.
-				nest.Active = false
-				nest.Discarded = "spawnpoints"
-				discarded := null.StringFrom(nest.Discarded)
-				var nullInt null.Int
-				mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-					Spawnpoints: nest.Spawnpoints,
-					Active:      &nest.Active,
-					Discarded:   &discarded,
-					PokemonId:   &nullInt,
-					PokemonForm: &nullInt,
-				}, "updating spawnpoints, disabling due to spawnpoints filter.")
-
-				continue
-			}
 		}
 
 		if curNestProcessor != nil {
-			// safe to access map from previous config load. It is read only.
-			oldNest := curNestProcessor.nestIdsToNests[nest.Id]
+			oldNest := curNestProcessor.nestMatcher.GetNestById(nest.Id)
 			if oldNest != nil {
 				nest.NestStatsInfo = oldNest.NestStatsInfo
 			}
 		}
 
-		nest.Discarded = ""
+		fullName := nest.FullName()
 
-		// update if !active in DB.. or if db didn't have spawnpoints but we have them now
-		if !nest.Active || (dbNeedsSpawnpoints && nest.Spawnpoints != nil) {
-			nest.Active = true
-			var discarded null.String
-			mgr.addOrUpdateNestInDb(ctx, nest, &db_store.NestPartialUpdate{
-				Spawnpoints: nest.Spawnpoints,
-				Active:      &nest.Active,
-				Discarded:   &discarded,
-			}, "updating spawnpoints (if they were fetched) and enabling")
-		}
-
-		if err := nestMatcher.AddNest(nest, nil); err != nil {
+		if err := nestMatcher.AddNest(nest); err != nil {
 			mgr.logger.Warnf("NEST-LOAD[%s]: Failed to add nest to matcher: %v", fullName, err)
 			continue
 		}
 
+		var spawnpointsStr string
+
 		if nest.Spawnpoints == nil {
-			mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded and active with unknown number of spawnpoints", fullName)
+			spawnpointsStr = "unknown number of spawnpoints"
 		} else {
-			mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded and active with %d spawnpoint(s)", fullName, *nest.Spawnpoints)
+			spawnpointsStr = fmt.Sprintf("%d spawnpoint(s)", *nest.Spawnpoints)
 		}
 
-		nestsById[nest.Id] = nest
+		mgr.logger.Infof("NEST-LOAD[%s]: Nest loaded with %s covering %0.3f meters squared", fullName, spawnpointsStr, nest.AreaM2)
 	}
 
-	nestProcessor := NewNestProcessor(mgr.nestProcessor, mgr.logger, mgr.nestsDBStore, nestMatcher, nestsById, mgr.webhookSender, config)
-	nestProcessor.LogConfiguration("Config loaded: ", len(nestsById))
+	nestProcessor := NewNestProcessor(mgr.nestProcessor, mgr.logger, mgr.nestsDBStore, nestMatcher, mgr.webhookSender, config)
+	nestProcessor.LogConfiguration("Config loaded: ", nestMatcher.Len())
 
 	// now we can swap in the new state
 	mgr.nestProcessorMutex.Lock()
@@ -399,7 +249,9 @@ func (mgr *NestProcessorManager) LoadConfig(ctx context.Context, config Config) 
 
 	mgr.nestProcessor = nestProcessor
 
-	// if we can't push one, there's already one.
+	// Notify the background goroutine that config was reloaded. If we can't
+	// push into the channel, it means there's already a reload queued up, so
+	// just move on.
 	select {
 	case mgr.reloadCh <- struct{}{}:
 	default:

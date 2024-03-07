@@ -323,7 +323,7 @@ func NewNestFromKojiFeature(feature *geojson.Feature) (*Nest, error) {
 	case uint64:
 		nestId = int64(v)
 	default:
-		return nil, fmt.Errorf("feature '%s': id '%s' type '%T' not supported", fullName, v)
+		return nil, fmt.Errorf("feature '%s': id '%s' type '%T' not supported", fullName, v, v)
 	}
 
 	geometry := feature.Geometry
