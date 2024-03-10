@@ -1,8 +1,7 @@
 version: '3.7'
 services:
   fletchling:
-    build: .
-    image: fletchling
+    image: ghcr.io/unownhash/fletchling:latest
     container_name: fletchling
     restart: unless-stopped
     volumes:
@@ -18,7 +17,7 @@ services:
   # to exec into for the importer. See the 'docker-osm-importer.sh'
   # script.
   fletchling-tools:
-    image: fletchling
+    image: ghcr.io/unownhash/fletchling:latest
     container_name: fletchling-tools
     restart: unless-stopped
     command: ./sleep
