@@ -133,10 +133,11 @@ func (st *NestsDBStore) updateNestPartial(ctx context.Context, queryer dbQueryer
 
 func (st *NestsDBStore) disableOverlappingNests(ctx context.Context, queryer dbQueryer, percent float64) (int64, error) {
 	const query = `
-        UPDATE nests SET active=0,discarded='overlap' WHERE nest_id IN (
-          SELECT b.nest_id
-          FROM nests a, nests b
-          WHERE a.active = 1 AND b.active = 1 AND a.m2 > b.m2 AND ST_Intersects(a.polygon, b.polygon) AND ST_Area(ST_Intersection(a.polygon,b.polygon)) / ST_Area(b.polygon) * 100 > ?
+        UPDATE nests n SET n.active=0,n.discarded='overlap' WHERE n.nest_id IN (
+          SELECT * FROM (SELECT b.nest_id
+	          FROM nests a, nests b
+	          WHERE a.active = 1 AND b.active = 1 AND a.m2 > b.m2 AND ST_Intersects(a.polygon, b.polygon) AND ST_Area(ST_Intersection(a.polygon,b.polygon)) / ST_Area(b.polygon) * 100 > ?
+		  ) subq
         )`
 
 	res, err := queryer.ExecContext(ctx, query, percent)
