@@ -31,7 +31,7 @@ const (
 )
 
 func usage(flagSet *flag.FlagSet, output io.Writer) {
-	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **", version.APP_VERSION)
+	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **\n", version.APP_VERSION)
 	fmt.Fprintf(output, "Usage: %s [-help] [-debug] [-skip-activation] [-all-areas] [-f configfile] [<area-name>]\n", os.Args[0])
 	fmt.Fprint(output, "\n")
 	fmt.Fprintf(output, "%s is used to import data from overpass into your nests db. This is generally ", os.Args[0])

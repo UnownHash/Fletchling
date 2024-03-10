@@ -32,8 +32,8 @@ const (
 )
 
 func usage(flagSet *flag.FlagSet, output io.Writer) {
-	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **", version.APP_VERSION)
-	fmt.Fprintf(output, "Usage: %s [-debug] [-help] [-f <config-filename>]", os.Args[0])
+	fmt.Fprintf(output, "** A wild Fletchling has appeared. Version %s **\n", version.APP_VERSION)
+	fmt.Fprintf(output, "Usage: %s [-debug] [-help] [-f <config-filename>]\n", os.Args[0])
 	fmt.Fprint(output, "\n")
 	fmt.Fprint(output, "Options:\n")
 	flagSet.SetOutput(output)
