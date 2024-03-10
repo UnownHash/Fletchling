@@ -13,7 +13,7 @@ require (
 	github.com/knadh/koanf/parsers/toml v0.1.0
 	github.com/knadh/koanf/providers/file v0.1.0
 	github.com/knadh/koanf/providers/structs v0.1.0
-	github.com/knadh/koanf/v2 v2.0.2
+	github.com/knadh/koanf/v2 v2.1.0
 	github.com/paulmach/orb v0.11.1
 	github.com/paulmach/osm v0.8.0
 	github.com/prometheus/client_golang v1.17.0
