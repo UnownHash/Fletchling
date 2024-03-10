@@ -35,8 +35,7 @@ After adding the config to Golbat, restart Golbat to have it take effect.
 ## docker
 
 1. There is an included docker-compose.yml.example file. Copy it to docker-compose.yml and edit it, if needed.
-2. `docker-compose build`
-3. `docker-compose up -d`
+2. `docker-compose up -d`
 
 ## pm2
 
