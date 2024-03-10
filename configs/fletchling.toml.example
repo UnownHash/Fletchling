@@ -98,7 +98,7 @@ default_name = "Unknown Nest"
 ##-- GOLBAT CONFIG EXAMPLE --
 ## [[webhooks]]
 ## url = "http://127.0.0.1:9042/webhook"
-## types = ["pokemon"]
+## types = ["pokemon_iv"]  # fletchling only looks at encounters
 ##-- END GOLBAT CONFIG EXAMPLE --
 addr = "127.0.0.1:9042"
 
