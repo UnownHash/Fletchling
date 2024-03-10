@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# run fletchling-importer under docker
+# run fletchling-osm-importer under docker
 
 cd `dirname $0`
 
-docker-compose --profile cli run --rm fletchling-osm-importer "$@"
+docker-compose exec fletchling-tools ./fletchling-osm-importer "$@"

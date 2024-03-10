@@ -2,6 +2,7 @@ package koji_client
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,7 +27,7 @@ type APIClient struct {
 	httpClient *http.Client
 }
 
-func (cli *APIClient) makePublicRequest(method, url_str string, reader *bytes.Reader) (*http.Response, error) {
+func (cli *APIClient) makePublicRequest(ctx context.Context, method, url_str string, reader *bytes.Reader) (*http.Response, error) {
 	var io_reader io.Reader
 
 	if reader != nil {
@@ -38,6 +39,8 @@ func (cli *APIClient) makePublicRequest(method, url_str string, reader *bytes.Re
 	if err != nil {
 		return nil, fmt.Errorf("error forming http request: %w", err)
 	}
+
+	req = req.WithContext(ctx)
 
 	req_hdr := req.Header
 	req_hdr.Set("Content-Type", "application/json")
@@ -53,8 +56,8 @@ func (cli *APIClient) makePublicRequest(method, url_str string, reader *bytes.Re
 	return resp, nil
 }
 
-func (cli *APIClient) GetFeatureCollection(project string) (*geojson.FeatureCollection, error) {
-	resp, err := cli.makePublicRequest("GET", "/geofence/feature-collection/"+project, nil)
+func (cli *APIClient) GetFeatureCollection(ctx context.Context, project string) (*geojson.FeatureCollection, error) {
+	resp, err := cli.makePublicRequest(ctx, "GET", "/geofence/feature-collection/"+project, nil)
 	if err != nil {
 		return nil, err
 	}

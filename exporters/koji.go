@@ -20,7 +20,7 @@ func (*KojiExporter) ExporterName() string {
 }
 
 func (exporter *KojiExporter) ExportFeatures(ctx context.Context) ([]*geojson.Feature, error) {
-	fc, err := exporter.kojiCli.GetFeatureCollection(exporter.projectName)
+	fc, err := exporter.kojiCli.GetFeatureCollection(ctx, exporter.projectName)
 	if err != nil {
 		return nil, err
 	}

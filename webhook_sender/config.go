@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/UnownHash/Fletchling/geo"
+	"github.com/UnownHash/Fletchling/areas"
 )
 
 type SettingsConfig struct {
@@ -44,10 +44,10 @@ func (cfg *WebhookConfig) HeadersAsMap() map[string]string {
 	return headerMap
 }
 
-func (cfg *WebhookConfig) AreaNames() []geo.AreaName {
+func (cfg *WebhookConfig) AreaNames() []areas.AreaName {
 	//return geo.AreaStringsToAreaNames(cfg.Areas)
 	// see the struct:
-	return []geo.AreaName{geo.AreaName{"", "*"}}
+	return []areas.AreaName{areas.NewAreaName("", "*")}
 }
 
 func (cfg *WebhookConfig) Validate() error {

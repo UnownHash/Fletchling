@@ -12,6 +12,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/UnownHash/Fletchling/areas"
 	"github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/processor/models"
 )
@@ -24,7 +25,7 @@ type NestWebhookMessage struct {
 type webhookDestination struct {
 	logger     *logrus.Logger
 	config     WebhookConfig
-	areaNames  []geo.AreaName
+	areaNames  []areas.AreaName
 	httpClient *http.Client
 }
 
@@ -48,7 +49,7 @@ func (dest *webhookDestination) sendMessages(messages []NestWebhookMessage) erro
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(buf.Bytes()))
 	if err != nil {
-		return fmt.Errorf("couldn't create request for porable webhook to '%s': %w", err)
+		return fmt.Errorf("couldn't create request for porable webhook to '%s': %w", url, err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -79,7 +80,7 @@ func (dest *webhookDestination) filterMessages(messages []NestWebhookMessage) []
 	}
 	filteredMessages := make([]NestWebhookMessage, 0)
 	for _, message := range messages {
-		if !geo.AreaMatchWithWildcards(message.Message.AreaName, dest.areaNames) {
+		if !message.Message.AreaName.Matches(dest.areaNames) {
 			continue
 		}
 		filteredMessages = append(filteredMessages, message)
@@ -105,7 +106,7 @@ type NestWebhook struct {
 	//CurrentTime     int         `json:"current_time"`
 	//NestSubmittedBy string      `json:"nest_submitted_by,omitempty"`
 
-	AreaName geo.AreaName `json:"-"`
+	AreaName areas.AreaName `json:"-"`
 }
 
 type nestWebhookQueue struct {
@@ -150,7 +151,7 @@ func (sender *PoracleSender) AddNestWebhook(nest *models.Nest, ni *models.Nestin
 		PokemonRatio: ni.NestPct(),
 		ResetTime:    ni.DetectedAt.Unix(),
 		PolyPath:     string(polyPathJson),
-		AreaName:     geo.AreaName{Parent: "", Name: nest.AreaName.ValueOrZero()},
+		AreaName:     areas.AreaStringToAreaName(nest.AreaName.ValueOrZero()),
 	}
 
 	whMessage := NestWebhookMessage{

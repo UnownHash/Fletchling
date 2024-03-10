@@ -89,7 +89,7 @@ func (srv *HTTPServer) handleGetNest(c *gin.Context) {
 		return
 	}
 
-	nest := srv.nestProcessorManager.GetNestByID(nestId)
+	nest := srv.nestProcessorManager.GetNestById(nestId)
 	if nest == nil {
 		c.JSON(http.StatusNotFound, &APIErrorResponse{
 			Error: "Nest not found",
@@ -119,7 +119,7 @@ func (srv *HTTPServer) handleGetNestStats(c *gin.Context) {
 			return
 		}
 
-		nest := nestProcessor.GetNestByID(nestId)
+		nest := nestProcessor.GetNestById(nestId)
 		if nest == nil {
 			c.JSON(http.StatusNotFound, &APIErrorResponse{
 				Error: "Nest not found",

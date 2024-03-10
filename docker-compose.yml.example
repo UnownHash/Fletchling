@@ -1,8 +1,8 @@
 version: '3.7'
 services:
   fletchling:
-    build: .
-    image: fletchling
+    image: ghcr.io/unownhash/fletchling:latest
+    container_name: fletchling
     restart: unless-stopped
     volumes:
       - ./configs:/fletchling/configs
@@ -13,13 +13,17 @@ services:
     ports:
       - "9042:9042"
 
-  fletchling-osm-importer:
-    image: fletchling
-    container_name: fletchling-osm-importer
-    command: ./fletchling-osm-importer
-    restart: never
-    profiles:
-      - cli
+  # a container that starts and sleeps. this can be used
+  # to exec into for the importer. See the 'docker-osm-importer.sh'
+  # script.
+  fletchling-tools:
+    image: ghcr.io/unownhash/fletchling:latest
+    container_name: fletchling-tools
+    restart: unless-stopped
+    command: ./sleep
     volumes:
+      - ./configs:/fletchling/configs
+      - ./db_store/sql:/fletchling/db_store/sql
+      - ./logs:/fletchling/logs
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro

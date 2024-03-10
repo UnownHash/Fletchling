@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -21,12 +22,17 @@ func (f *PlainFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 }
 
 type Config struct {
-	Debug      bool   `koanf:"debug"`
-	Filename   string `koanf:"filename"`
-	MaxSizeMB  int    `koanf:"max_size"` // MB
-	MaxBackups int    `koanf:"max_backups"`
-	MaxAgeDays int    `koanf:"max_age"` // Days
-	Compress   bool   `koanf:"compress"`
+	Debug      bool   `koanf:"debug" json:"debug"`
+	Filename   string `koanf:"-" json:"-"`
+	LogDir     string `koanf:"log_dir" json:"log_dir"`
+	MaxSizeMB  int    `koanf:"max_size" json:"max_size"` // MB
+	MaxBackups int    `koanf:"max_backups" json:"max_backups"`
+	MaxAgeDays int    `koanf:"max_age" json:"max_age"` // Days
+	Compress   bool   `koanf:"compress" json:"compress"`
+}
+
+func (cfg *Config) FilePath() string {
+	return path.Join(cfg.LogDir, cfg.Filename)
 }
 
 func (cfg *Config) Validate() error {
@@ -36,9 +42,9 @@ func (cfg *Config) Validate() error {
 func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool) *logrus.Logger {
 	output := io.Writer(os.Stdout)
 
-	if cfg.Filename != "" {
+	if cfg.Filename != "" && cfg.LogDir != "" {
 		lumberjackLogger := &lumberjack.Logger{
-			Filename:   cfg.Filename,
+			Filename:   cfg.FilePath(),
 			MaxSize:    cfg.MaxSizeMB,
 			MaxBackups: cfg.MaxBackups,
 			MaxAge:     cfg.MaxAgeDays,

@@ -7,25 +7,76 @@
 ## If you're already using the nests table in golbat db, configure
 ## your golbat db info here. This is a separate configuration from golbat_db
 ## below, because you may use any database you want for nests.
+##
+## Your user is required to have the following grants:
+## -- all privileges on dbname.nests
+## -- all privileges on dbname.nests_schema_migrations
+## (Ignore that, if you don't know what it means)
 [nests_db]
 addr = "dbhost"
 db = "fletchling"
 user = "username"
 password = "password"
 
-## Configure your golbat DB if you want to be able to refresh the
-## number of spawnpoints that each nest has in order to use the
-## 'min_spawnpoints' filtering. Otherwise, Fletchling will use what's
-## in the DB already and if spawnpoints are not known, the nest
-## will be allowed (not filtered). Spawnpoints will only be queried
-## when we don't already have them (or in a future API call).
+## Configure your golbat DB if you want to be able to auto-disable nests
+## with too few spawnpoints.
 ## This is *NOT* the configuration for your nests DB, even though it
 ## may be the same!
+##
+## Your user is required to have the following grants:
+## -- select on your-golbat-db.spawnpoints
+## (Ignore that, if you don't know what it means)
 #[golbat_db]
 #addr = "dbhost"
 #db = "golbat"
 #user = "username"
 #password = "password"
+
+[filters]
+## Do not process nests smaller than this area in meters squared. The
+## importer will not import these small areas into the DB. If any nests are
+## already in the DB smaller than this, Fletchling will ignore them when
+## starting or reloading. (default 100.0)
+min_area_m2 = 100.0
+
+## Do not process nests larger than this area in meters squared. The
+## importer will not import these large areas into the DB. If any nests are
+## already in the DB larger than this, Fletchling will ignore them when
+## starting or reloading. (default 10000000.0)
+max_area_m2 = 10000000.0
+
+## How many spawnpoints required in the nest in order to track (default 10)
+## Requires the golbat_db section above to be configured OR your nests
+## table to already be populated with spawnpoint counts, otherwise this
+## option will be ignored. This option does not prevent the importer from
+## putting nests into the nests_db, however it will mark them inactive
+## if there's not enough spawnpoints.
+## The spawnpoint counts may be refreshed from the golbat_db at any time
+## via an API call as long as golbat_db is configured above.
+min_spawnpoints = 10
+
+## How much overlap with a larger nest to allow. If any nest overlaps
+## with a larger nest by more than this percent, then the nest will be
+## deactivated upon filtering. (default 60)
+max_overlap_percent = 60
+
+[importer]
+# default name to use when no other name can be determined when importing.
+# if you set this to "", nests with no names will be skipped.
+default_name = "Unknown Nest"
+
+## Configure the source you'd like to use for your areas. Areas are used
+## by the importer to use for OSM data searching as well as labeling the
+## nests with their areas in the nests_db, if they are not yet labeled.
+## Like Golbat, you can either use a Koji project for areas, or you can
+## have them read from a file. If using a file, it must be a geojson feature
+## collection or a poracle-style geofence.json.
+## This configuration should match your Golbat configuration!
+## Populate *1* of 'koji_url' or 'filename':
+[areas]
+#koji_url = "http://127.0.0.1:8080/api/v1/geofence/feature-collection/MyAreasProject"
+#koji_token = ""
+#filename =
 
 ## Poracle nest-change webhooks. You may configure more than one. Just
 ## duplicate the whole [[webhooks]] entry.
@@ -35,74 +86,59 @@ password = "password"
 
 #[[webhooks]]
 #url = "http://localhost:4202"
+#areas = ["London/*", "*/Harrow", "Harrow"]
 
 [http]
 ## http server listen address (default: 127.0.0.1:9042)
 ## If you run docker, change this to ":9042" or "0.0.0.0:9042"
+## This is where Golbat will send pokemon webhooks. When configuring
+## golbat, the endpoint path for Fletchling will need to be /webhook.
+## For example: if 'addr' below is the default of '127.0.0.1:9042',
+## then you would need to configure webhooks in golbat like so:
+##-- GOLBAT CONFIG EXAMPLE --
+## [[webhooks]]
+## url = "http://127.0.0.1:9042/webhook"
+## types = ["pokemon"]
+##-- END GOLBAT CONFIG EXAMPLE --
 addr = "127.0.0.1:9042"
 
 [logging]
 debug = false
-filename = "logs/fletchling.log"
-max_backups = 50
+# Change log_dir to "" if you only want output to stdout (your terminal).
+log_dir = "logs/"
+max_backups = 20
 compress = true
 
-# A number of options that can be tweaked. I would leave the options alone
-# that are commented out, at least to start. I find that the defaults work
-# well.
-# But, you may wish to limit your nests by area or spawnpoints. So, take a
-# look at those. The spawnpoints filter only works if you've configured the
-# 'golbat_db'.
+# Some adjustable settings. Stats periods get thrown away 
+# and ignored when there's a pokemon spawning at an incredibly
+# high rate (CD, spotlight hour, etc). Stats rotations are not
+# aligned to event start/stop times, therefore it is a bit better
+# to rotate stats more frequently so that a single stats period
+# doesn't overlap before/after event start/stops too much. However,
+# more rotations means more memory being used.
 [processor]
-## how many spawnpoints required in the geofence in order to track (default 10)
-## Requires the golbat_db section above to be configured. The number of
-## spawnpoints for your nests will only be computed at startup and reload
-## and only when they are not yet in the nests DB. There will be an API
-## call made available to refresh these.
-min_spawnpoints = 10
-
-## minimum area in meters^2 required in order to track (default 100.0)
-min_area_m2 = 100.0
-
-## maximum area in meters^2 that cannot be exceeded in order to track (default 10000000.0)
-max_area_m2 = 10000000.0
-
 ## Whether to log the last stats period when processing (default false)
 ## This just dumps info about the single time period that just finished
 ## to the logs.
-# log_last_stats_period = false
+log_last_stats_period = false
 
 ## how often to rotate stats (default 15)
-# rotation_interval_minutes = 15
+rotation_interval_minutes = 15
 
-## Require this many minutes of stats in order to produce the nesting pokemon and update the DB (default 1)
-# min_history_duration_hours = 1
+## Require this many hours of stats in order to produce the nesting pokemon and update the nests_db (default 1)
+min_history_duration_hours = 1
 
-## Hold stats covering at most this many hours (default 12)
-# max_history_duration_hours = 12
-
-## number of a particular pokemon type seen needed to count as nesting (default 3)
-# min_nest_pokemon = 4
-
-## pct of particular pokemon type seen needed to count as nesting (default 12.0)
-# min_nest_pokemon_pct = 12.0
-
-## number of total pokemon seen in nest needed to count as nesting (default 12)
-# min_total_pokemon = 12
-
-## if > 0, ignore pokemon that are spawning globally more than this percent (default 15.0)
-# max_global_spawn_pct = 15.0
-
-## Mininium required pokemon NestPct/GlobalPct ratio (default 8.0)
-# min_nest_pct_to_global_pct_ratio = 8
-
-## Throw out a whole time period if a single mon spawns at more than this percent globally (default 40.0)
-# skip_period_min_global_spawn_pct = 40.0
+## Hold stats covering at most this many hours (default 8)
+max_history_duration_hours = 8
 
 ## How many hours without seeing a nesting pokemon before we unset it in DB (default 12)
-# no_nesting_pokemon_age_hours = 12
+no_nesting_pokemon_age_hours = 12
 
 # Prometheus settings.
 [prometheus]
 ## Uncomment to enable prometheus stats and corresponding /metrics endpoint
 #enabled = true
+
+# In case there's a need to change this:
+[overpass]
+#url = "https://overpass-api.de/api/interpreter"

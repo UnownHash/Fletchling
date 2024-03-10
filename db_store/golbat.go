@@ -14,7 +14,7 @@ type GolbatDBStore struct {
 	db     *sqlx.DB
 }
 
-func (st *GolbatDBStore) GetContainedSpawnpoints(ctx context.Context, geom *geojson.Geometry) ([]uint64, error) {
+func (st *GolbatDBStore) GetContainedSpawnpoints(ctx context.Context, geom *geojson.Geometry) (spawnpointIds []uint64, err error) {
 	const getContainedSpawnpointsQuery = `
 SELECT id FROM spawnpoint
     WHERE lat > ? AND lon > ?
@@ -33,20 +33,23 @@ SELECT id FROM spawnpoint
 		return nil, err
 	}
 
-	spawnpoint_ids := make([]uint64, 0, 128)
-	var spawnpoint_id uint64
+	defer func() { err = closeRows(rows, err) }()
+
+	spawnpointIds = make([]uint64, 0, 128)
+	var spawnpointId uint64
 
 	for rows.Next() {
-		if err = rows.Scan(&spawnpoint_id); err != nil {
+		if err = rows.Scan(&spawnpointId); err != nil {
 			if err == sql.ErrNoRows {
 				err = nil
 			}
-			return nil, err
+			spawnpointIds = nil
+			return
 		}
-		spawnpoint_ids = append(spawnpoint_ids, spawnpoint_id)
+		spawnpointIds = append(spawnpointIds, spawnpointId)
 	}
 
-	return spawnpoint_ids, nil
+	return
 }
 
 func (st *GolbatDBStore) GetSpawnpointsCount(ctx context.Context, geom *geojson.Geometry) (int64, error) {
@@ -83,9 +86,11 @@ func NewGolbatDBStore(config DBConfig, logger *logrus.Logger) (*GolbatDBStore, e
 		return nil, err
 	}
 
-	if config.MaxPool > 0 {
-		db.SetMaxOpenConns(config.MaxPool)
+	if config.MaxPool <= 0 {
+		config.MaxPool = 10
 	}
+	db.SetMaxOpenConns(config.MaxPool)
+	db.SetMaxIdleConns(5)
 
 	return &GolbatDBStore{
 		logger: logger,

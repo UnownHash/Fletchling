@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 
+	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/processor"
 	"github.com/UnownHash/Fletchling/stats_collector"
 )
@@ -23,7 +24,9 @@ type HTTPServer struct {
 	ginRouter            *gin.Engine
 	nestProcessorManager *processor.NestProcessorManager
 	statsCollector       stats_collector.StatsCollector
+	dbRefresher          *filters.DBRefresher
 	reloadFn             func() error
+	filtersConfigFn      func() filters.Config
 }
 
 // Run starts and runs the HTTP server until 'ctx' is cancelled or the server fails to start.
@@ -67,7 +70,7 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 	}
 }
 
-func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, reloadFn func() error) (*HTTPServer, error) {
+func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, dbRefresher *filters.DBRefresher, reloadFn func() error, filtersConfigFn func() filters.Config) (*HTTPServer, error) {
 	// Create the web server.
 	r := gin.New()
 	r.Use(gin.RecoveryWithWriter(logger.Writer()))
@@ -79,6 +82,8 @@ func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestPr
 		nestProcessorManager: nestProcessorManager,
 		statsCollector:       statsCollector,
 		reloadFn:             reloadFn,
+		dbRefresher:          dbRefresher,
+		filtersConfigFn:      filtersConfigFn,
 	}
 
 	srv.setupRoutes()
