@@ -4,4 +4,4 @@
 
 cd `dirname $0`
 
-docker-compose exec fletchling-tools ./fletchling-osm-importer "$@"
+docker compose exec fletchling-tools ./fletchling-osm-importer "$@"
