@@ -19,5 +19,3 @@ CREATE TABLE IF NOT EXISTS `nests` (
   KEY `ix_coords` (`lat`,`lon`),
   KEY `ix_nests_updated` (`updated`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- ALTER TABLE nests MODIFY nest_id BIGINT NOT NULL AUTO_INCREMENT;

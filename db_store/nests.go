@@ -65,6 +65,7 @@ type NestsDBStore struct {
 	logger *logrus.Logger
 	db     *sqlx.DB
 	dbName string
+	dsn    string
 }
 
 func (st *NestsDBStore) updateNestPartial(ctx context.Context, queryer dbQueryer, nestId int64, nestUpdate *NestPartialUpdate) error {
@@ -132,14 +133,7 @@ func (st *NestsDBStore) updateNestPartial(ctx context.Context, queryer dbQueryer
 }
 
 func (st *NestsDBStore) disableOverlappingNests(ctx context.Context, queryer dbQueryer, percent float64) (int64, error) {
-	const query = `
-        UPDATE nests n SET n.active=0,n.discarded='overlap' WHERE n.nest_id IN (
-          SELECT * FROM (SELECT b.nest_id
-	          FROM nests a, nests b
-	          WHERE a.active = 1 AND b.active = 1 AND a.m2 > b.m2 AND ST_Intersects(a.polygon, b.polygon) AND ST_Area(ST_Intersection(a.polygon,b.polygon)) / ST_Area(b.polygon) * 100 > ?
-		  ) subq
-        )`
-
+	const query = `CALL nest_filter_overlap(?)`
 	res, err := queryer.ExecContext(ctx, query, percent)
 	if err == nil {
 		return res.RowsAffected()
@@ -539,7 +533,12 @@ func (st *NestsDBStore) Migrate(migratePath string) error {
 		DatabaseName:    st.dbName,
 	}
 
-	dbDriver, err := migrate_mysql.WithInstance(st.db.DB, migrateConfig)
+	db, err := sql.Open("mysql", st.dsn+"?&multiStatements=true")
+	if err != nil {
+		return fmt.Errorf("failed to connect to the DB: %w", err)
+	}
+
+	dbDriver, err := migrate_mysql.WithInstance(db, migrateConfig)
 	if err != nil {
 		return err
 	}
@@ -637,7 +636,9 @@ func (st *NestsDBStore) CheckMigrate(migratePath string) (curVersion, maxVersion
 }
 
 func NewNestsDBStore(config DBConfig, logger *logrus.Logger) (*NestsDBStore, error) {
-	db, err := sqlx.Connect("mysql", config.AsDSN())
+	dsn := config.AsDSN()
+
+	db, err := sqlx.Connect("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -653,5 +654,6 @@ func NewNestsDBStore(config DBConfig, logger *logrus.Logger) (*NestsDBStore, err
 		logger: logger,
 		db:     db,
 		dbName: config.Db,
+		dsn:    dsn,
 	}, nil
 }

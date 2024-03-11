@@ -6,7 +6,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./configs:/fletchling/configs
-      - ./db_store/sql:/fletchling/db_store/sql
       - ./logs:/fletchling/logs
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -23,7 +22,6 @@ services:
     command: ./sleep
     volumes:
       - ./configs:/fletchling/configs
-      - ./db_store/sql:/fletchling/db_store/sql
       - ./logs:/fletchling/logs
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
