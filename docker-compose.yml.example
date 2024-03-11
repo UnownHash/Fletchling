@@ -11,6 +11,12 @@ services:
       - /etc/localtime:/etc/localtime:ro
     ports:
       - "9042:9042"
+    healthcheck:
+      test: curl --fail http://localhost:9042/status || exit 1
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 30s
 
   # a container that starts and sleeps. this can be used
   # to exec into for the importer. See the 'docker-osm-importer.sh'
