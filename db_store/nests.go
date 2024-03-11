@@ -133,7 +133,7 @@ func (st *NestsDBStore) updateNestPartial(ctx context.Context, queryer dbQueryer
 }
 
 func (st *NestsDBStore) disableOverlappingNests(ctx context.Context, queryer dbQueryer, percent float64) (int64, error) {
-	const query = `CALL nest_filter_overlap(?)`
+	const query = `CALL fl_nest_filter_overlap(?)`
 	res, err := queryer.ExecContext(ctx, query, percent)
 	if err == nil {
 		return res.RowsAffected()
