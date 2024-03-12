@@ -70,6 +70,14 @@ Importing docs can be found [here.](./docs/IMPORTING.md)
 
 API docs can be found [here.](./docs/API.md)
 
+# FAQ
+
+FAQ can be found [here.](./docs/FAQ.md)
+
+# Credits
+
+Thanks to the folks who put a lot of time and effort into nestcollector! Most of the importing, nest-activation filtering, and so forth were either copied/ported from nestcollector or used as a guide to achieve some amount of compatibility.
+
 # Enjoy!
 
 All your nest are belong to us.
