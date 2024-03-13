@@ -13,7 +13,7 @@
 ## -- all privileges on dbname.nests_schema_migrations
 ## (Ignore that, if you don't know what it means)
 [nests_db]
-addr = "dbhost"
+addr = "dbhost:3306"
 db = "fletchling"
 user = "username"
 password = "password"
@@ -27,7 +27,7 @@ password = "password"
 ## -- select on your-golbat-db.spawnpoints
 ## (Ignore that, if you don't know what it means)
 #[golbat_db]
-#addr = "dbhost"
+#addr = "dbhost:3306"
 #db = "golbat"
 #user = "username"
 #password = "password"
