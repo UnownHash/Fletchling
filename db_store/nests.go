@@ -128,6 +128,10 @@ func (st *NestsDBStore) updateNestPartial(ctx context.Context, queryer dbQueryer
 	args[n] = nestId
 	n++
 
+	if st.logger.Level >= logrus.DebugLevel {
+		st.logger.Debugf("Running partial nest DB update: %s, %#v", query.String(), args[:n])
+	}
+
 	_, err := queryer.ExecContext(ctx, query.String(), args[:n]...)
 	return err
 }

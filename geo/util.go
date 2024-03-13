@@ -37,6 +37,16 @@ func idIsValid(id any) (int64, error) {
 	return nestId, nil
 }
 
+func GeometrySupported(geometry orb.Geometry) bool {
+	switch geometry.GeoJSONType() {
+	case "Polygon":
+	case "MultiPolygon":
+	default:
+		return false
+	}
+	return true
+}
+
 func NameAndIntIdFromFeature(feature *geojson.Feature) (string, null.String, int64, error) {
 	var areaName null.String
 

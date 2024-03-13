@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/UnownHash/Fletchling/geo"
 	orb_geo "github.com/paulmach/orb/geo"
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 
 	"github.com/UnownHash/Fletchling/exporters"
+	"github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/importers"
 )
 
@@ -38,6 +38,11 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 			return err
 		}
 
+		if feature.Geometry == nil || feature.Properties == nil {
+			runner.logger.Warnf("ImportRunner: skipping feature with no geometry or properties")
+			continue
+		}
+
 		if name, _ := feature.Properties["name"].(string); name == "" {
 			if config.DefaultName == "" {
 				runner.logger.Warnf("ImportRunner: skipping feature with no name and no default name configured")
@@ -64,6 +69,18 @@ func (runner *ImportRunner) Import(ctx context.Context) error {
 		}
 
 		geometry := feature.Geometry
+
+		switch geometryType := geometry.GeoJSONType(); geometryType {
+		case "Polygon":
+		case "MultiPolygon":
+		default:
+			runner.logger.Warnf("ImportRunner: skipping feature '%s': unsupported shape: %s",
+				fullName,
+				geometryType,
+			)
+			continue
+		}
+
 		area := orb_geo.Area(geometry)
 
 		if area < config.MinAreaM2 {
