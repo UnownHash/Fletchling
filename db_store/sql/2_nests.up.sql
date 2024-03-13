@@ -6,6 +6,7 @@ ALTER TABLE nests
     MODIFY `lon` double NOT NULL;
 
 -- Add procedure for overlap disablement
+-- Stolen graciously from nestcollector (thank you).
 CREATE PROCEDURE fl_nest_filter_overlap (IN maximum_overlap double)
 BEGIN
   DROP TEMPORARY TABLE IF EXISTS overlapNest;

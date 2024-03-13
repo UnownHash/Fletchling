@@ -3,13 +3,15 @@ package filters
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
-	"github.com/UnownHash/Fletchling/db_store"
 	orb_geo "github.com/paulmach/orb/geo"
-	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/guregu/null.v4"
+
+	"github.com/UnownHash/Fletchling/db_store"
+	"github.com/UnownHash/Fletchling/geo"
 )
 
 type RefreshNestConfig struct {
@@ -37,27 +39,46 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		partialUpdate = &db_store.NestPartialUpdate{}
 	}
 
-	var jsonGeometry *geojson.Geometry
 	active := null.BoolFrom(false)
 
 	origNest := nest
 	m2 := nest.M2
+	areaUpdated := false
 	spawnpoints := nest.Spawnpoints
 
-	// compute area, if it is unknown yet
-	if !m2.Valid {
-		geometry, err := nest.Geometry()
-		if err == nil {
-			jsonGeometry = geometry
-			area := orb_geo.Area(geometry.Geometry())
-			m2 = null.FloatFrom(area)
-			refresher.logger.Infof("DB-REFRESHER[%s]: area was computed to be %0.3f m².", fullName, area)
+	jsonGeometry, err := nest.Geometry()
+	if err == nil {
+		geometry := jsonGeometry.Geometry()
+		if geo.GeometrySupported(geometry) {
+			area := orb_geo.Area(geometry)
+
+			if m2.Valid {
+				if math.Abs(m2.Float64-area) > 100 {
+					refresher.logger.Infof("DB-REFRESHER[%s]: area is %0.3f m², but DB says %0.3f m², will update.", fullName, area, m2.Float64)
+					m2.Float64 = area
+					areaUpdated = true
+				}
+			} else {
+				// compute area, if it is unknown yet
+				refresher.logger.Infof("DB-REFRESHER[%s]: area was computed to be %0.3f m².", fullName, area)
+				m2 = null.FloatFrom(area)
+			}
 		} else {
-			refresher.logger.Warnf("DB-REFRESHER[%s]: found invalid geometry when computing area: %v",
+			refresher.logger.Warnf("DB-REFRESHER[%s]: found unsupported geometry: %s",
 				fullName,
-				err,
+				geometry.GeoJSONType(),
 			)
+			m2.Valid = false
+			spawnpoints.Valid = false
 		}
+	} else {
+		refresher.logger.Warnf("DB-REFRESHER[%s]: found invalid geometry: %v",
+			fullName,
+			err,
+		)
+		jsonGeometry = nil
+		m2.Valid = false
+		spawnpoints.Valid = false
 	}
 
 	// compute spawnpoints if golbat_db is configured
@@ -68,31 +89,19 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 	if m2.Valid && (config.MaxAreaM2 <= 0 || m2.Float64 <= config.MaxAreaM2) && (!spawnpoints.Valid || config.ForceSpawnpointsRefresh) && (refresher.golbatDBStore != nil) {
 		var err error
 
-		if jsonGeometry == nil {
-			jsonGeometry, err = nest.Geometry()
+		if !spawnpoints.Valid {
+			refresher.logger.Infof("DB-REFRESHER[%s]: number of spawnpoints is unknown. Will query golbat for them.", fullName)
 		}
+		numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry)
 		if err == nil {
-			if !spawnpoints.Valid {
-				refresher.logger.Infof("DB-REFRESHER[%s]: number of spawnpoints is unknown. Will query golbat for them.", fullName)
-			}
-			numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry)
-			if err == nil {
-				spawnpoints = null.IntFrom(numSpawnpoints)
-				refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count query returned %d", fullName, numSpawnpoints)
-			} else {
-				if spawnpoints.Valid {
-					refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (using current value): %v", fullName, err)
-				} else {
-					refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (skipping filtering): %v", fullName, err)
-				}
-			}
+			spawnpoints = null.IntFrom(numSpawnpoints)
+			refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count query returned %d", fullName, numSpawnpoints)
 		} else {
-			refresher.logger.Warnf("DB-REFRESHER[%s]: found invalid geometry when computing spawnpoints: %v",
-				fullName,
-				err,
-			)
-			m2.Valid = false
-			spawnpoints.Valid = false
+			if spawnpoints.Valid {
+				refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (using current value): %v", fullName, err)
+			} else {
+				refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (skipping filtering): %v", fullName, err)
+			}
 		}
 	}
 
@@ -144,7 +153,7 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		nest.Discarded = discarded
 	}
 
-	if !m2.Equal(nest.M2) {
+	if !m2.Equal(nest.M2) || areaUpdated {
 		makePartialUpdate()
 		partialUpdate.M2 = &m2
 		nest.M2 = m2
@@ -176,7 +185,7 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 	nest.Updated = null.IntFrom(time.Now().Unix())
 	partialUpdate.Updated = &nest.Updated
 
-	err := refresher.nestsDBStore.UpdateNestPartial(ctx, nest.NestId, partialUpdate)
+	err = refresher.nestsDBStore.UpdateNestPartial(ctx, nest.NestId, partialUpdate)
 	if err != nil {
 		discardedStr := discarded.ValueOrZero()
 		if !discarded.Valid {
