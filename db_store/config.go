@@ -35,7 +35,7 @@ func (cfg *DBConfig) SetFromUri(uri *url.URL) error {
 }
 
 func (cfg *DBConfig) AsDSN() string {
-	return fmt.Sprintf("%s:%s@(%s)/%s", cfg.User, cfg.Password, cfg.Addr, cfg.Db, cfg.Port)
+	return fmt.Sprintf("%s:%s@(%s:%s)/%s", cfg.User, cfg.Password, cfg.Addr, cfg.Port, cfg.Db)
 }
 
 func (cfg *DBConfig) Validate() error {
