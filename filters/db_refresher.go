@@ -2,7 +2,6 @@ package filters
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"time"
 
@@ -31,7 +30,7 @@ type DBRefresher struct {
 }
 
 func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNestConfig, nest db_store.Nest) (db_store.Nest, error) {
-	fullName := fmt.Sprintf("%s(%d)", nest.FullName(), nest.NestId)
+	fullName := nest.FullName()
 
 	var partialUpdate *db_store.NestPartialUpdate
 
@@ -175,6 +174,12 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		makePartialUpdate()
 		nest.PokemonId.Valid = false
 		partialUpdate.PokemonId = &nest.PokemonId
+		nest.PokemonForm.Valid = false
+		partialUpdate.PokemonForm = &nest.PokemonForm
+		nest.PokemonAvg.Valid = false
+		partialUpdate.PokemonAvg = &nest.PokemonAvg
+		nest.PokemonCount.Valid = false
+		partialUpdate.PokemonCount = &nest.PokemonCount
 	}
 
 	if partialUpdate == nil {
@@ -228,7 +233,7 @@ func (refresher *DBRefresher) RefreshAllNests(ctx context.Context, config Refres
 	if config.MaxOverlapPercent < 0 || config.MaxOverlapPercent >= 100 {
 		refresher.logger.Infof("DB-REFRESHER: Skipping overlap disablement due to overlap_max_percent=%0.3f", config.MaxOverlapPercent)
 	} else {
-		refresher.logger.Infof("Starting overlap disabling... this may take a while...")
+		refresher.logger.Infof("DB-REFRESHER: Starting overlap disabling... this may take a while...")
 		numDisabled, err := refresher.nestsDBStore.DisableOverlappingNests(ctx, config.MaxOverlapPercent)
 		if err != nil {
 			refresher.logger.Errorf("DB-REFRESHER: Overlap disablement errored: %v", err)
