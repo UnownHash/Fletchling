@@ -13,6 +13,7 @@ type DBConfig struct {
 	User     string `koanf:"user"`
 	Password string `koanf:"password"`
 	Db       string `koanf:"db"`
+	Port	 string `koanf:"port"`
 
 	MaxPool int `koanf:"max_pool"`
 }
@@ -34,7 +35,7 @@ func (cfg *DBConfig) SetFromUri(uri *url.URL) error {
 }
 
 func (cfg *DBConfig) AsDSN() string {
-	return fmt.Sprintf("%s:%s@(%s)/%s", cfg.User, cfg.Password, cfg.Addr, cfg.Db)
+	return fmt.Sprintf("%s:%s@(%s)/%s", cfg.User, cfg.Password, cfg.Addr, cfg.Db, cfg.Port)
 }
 
 func (cfg *DBConfig) Validate() error {
