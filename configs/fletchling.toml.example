@@ -17,6 +17,7 @@ addr = "dbhost"
 db = "fletchling"
 user = "username"
 password = "password"
+port = "3306"
 
 ## Configure your golbat DB if you want to be able to auto-disable nests
 ## with too few spawnpoints.
@@ -31,6 +32,7 @@ password = "password"
 #db = "golbat"
 #user = "username"
 #password = "password"
+#port = "3306"
 
 [filters]
 ## Do not process nests smaller than this area in meters squared. The
