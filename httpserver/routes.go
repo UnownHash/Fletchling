@@ -20,6 +20,11 @@ func (srv *HTTPServer) setupRoutes() {
 
 	r.Use(gin.RecoveryWithWriter(srv.logger.Writer()))
 
+	// unrestricted /status endpoint
+	r.GET("/status", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
 	r.POST("/webhook", srv.handleWebhook)
 
 	apiGroup := r.Group("/api", srv.authorizeAPI)
