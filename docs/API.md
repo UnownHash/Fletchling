@@ -46,3 +46,8 @@ Purges the specified amount of minutes of stats starting from the newest. 'inclu
 `curl -X PUT http://localhost:9042/api/stats/purge/keep -d '{ "duration_minutes": xx }'`
 
 This is another way to purge oldest stats. But with this one, you specify the duration to keep, not the duration to purge.
+
+# Healthcheck status endpoint
+
+## Get status
+`curl http://localhost:9042/status`
