@@ -9,6 +9,7 @@ import (
 
 	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/processor"
+	"github.com/UnownHash/Fletchling/version"
 )
 
 func (srv *HTTPServer) doDBRefresh(c *gin.Context, allSpawnpoints bool) error {
@@ -89,11 +90,16 @@ func (srv *HTTPServer) handleGetConfig(c *gin.Context) {
 	}
 
 	type getConfigResponse struct {
-		Config configResponse `json:"config"`
+		Config  configResponse `json:"config"`
+		Version string         `json:"version"`
 	}
 
-	var resp getConfigResponse
-	resp.Config.ProcessorConfig = srv.nestProcessorManager.GetConfig()
+	resp := getConfigResponse{
+		Version: version.APP_VERSION,
+		Config: configResponse{
+			ProcessorConfig: srv.nestProcessorManager.GetConfig(),
+		},
+	}
 
 	c.JSON(http.StatusOK, resp)
 }
