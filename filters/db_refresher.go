@@ -96,7 +96,9 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry)
 		if err == nil {
 			if spawnpoints.Valid {
-				refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count changed from %d to %d", fullName, spawnpoints.Int64, numSpawnpoints)
+				if spawnpoints.Int64 != numSpawnpoints {
+					refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count changed from %d to %d", fullName, spawnpoints.Int64, numSpawnpoints)
+				}
 			} else {
 				refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count initial value is %d", fullName, numSpawnpoints)
 			}
