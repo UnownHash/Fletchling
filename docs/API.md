@@ -1,17 +1,17 @@
 # API
 
-## Get config
+## Get config and the version of Fletchling that is running.
 `curl http://localhost:9042/api/config`
 
 ## Reload configuration
 `curl http://localhost:9042/api/config/reload`
 (Also supports PUT. You can also send a SIGHUP signal to the process)
 
-## Rerun spawnpoint, area, overlap filtering and reload configuration:
-`curl http://localhost:9042/api/config/reload?refresh=1`
+## Re-run spawnpoint, area, overlap filtering and reload configuration:
+`curl 'http://localhost:9042/api/config/reload?refresh=1'`
 
-## Refresh spawnpoint counts, re-run spawnpoint, area, overlap filtering and reload configuration:
-`curl http://localhost:9042/api/config/reload?refresh=1&spawnpoints=all`
+## Refresh spawnpoint counts; Re-run spawnpoint, area, overlap filtering and reload configuration:
+`curl 'http://localhost:9042/api/config/reload?spawnpoints=all'` (refresh=1 is implied and not required)
 
 ## Get all nests
 `curl http://localhost:9042/api/nests`

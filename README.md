@@ -39,6 +39,12 @@ After adding the config to Golbat, restart Golbat to have it take effect.
 
 ## pm2
 
+### Requirements
+
+You will need to have at least golang 1.22.1 installed. It is rather new as of the time of this writing. You may need to install it manually. See the [instructions and download links](https://go.dev/dl/).
+
+### Building and starting
+
 1. `make`
 2. `pm2 start ./fletchling --name fletchling -o /dev/null`
 
