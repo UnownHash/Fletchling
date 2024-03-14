@@ -35,7 +35,9 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 	var partialUpdate *db_store.NestPartialUpdate
 
 	makePartialUpdate := func() {
-		partialUpdate = &db_store.NestPartialUpdate{}
+		if partialUpdate == nil {
+			partialUpdate = &db_store.NestPartialUpdate{}
+		}
 	}
 
 	active := null.BoolFrom(false)
@@ -93,11 +95,15 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		}
 		numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry)
 		if err == nil {
+			if spawnpoints.Valid {
+				refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count changed from %d to %d", fullName, spawnpoints.Int64, numSpawnpoints)
+			} else {
+				refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count initial value is %d", fullName, numSpawnpoints)
+			}
 			spawnpoints = null.IntFrom(numSpawnpoints)
-			refresher.logger.Infof("DB-REFRESHER[%s]: spawnpoint count query returned %d", fullName, numSpawnpoints)
 		} else {
 			if spawnpoints.Valid {
-				refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (using current value): %v", fullName, err)
+				refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (using current value of %d): %v", fullName, spawnpoints.Int64, err)
 			} else {
 				refresher.logger.Warnf("DB-REFRESHER[%s]: couldn't query spawnpoints (skipping filtering): %v", fullName, err)
 			}
