@@ -244,5 +244,5 @@ func main() {
 		}
 	}
 
-	logger.Infof("Done.")
+	logger.Infof("Done. Don't forget to tell Fletchling to reload!")
 }
