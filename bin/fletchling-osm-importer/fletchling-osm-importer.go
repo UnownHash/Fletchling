@@ -62,6 +62,7 @@ func main() {
 	flagSet.BoolVar(helpFlag, "h", false, "help!")
 	configFileFlag := flagSet.String("f", DEFAULT_CONFIG_FILENAME, "config file to use")
 	allAreasFlag := flagSet.Bool("all-areas", false, "import all areas found in your areas source")
+	newAreasFlag := flagSet.Bool("new-areas", false, "import all areas found in your areas source that have not been imported yet")
 	skipActivateFlag := flagSet.Bool("skip-activation", false, "skips the final spawnpoint count gathering, filtering, and activation of new nests")
 
 	err := flagSet.Parse(os.Args[1:])
@@ -79,13 +80,17 @@ func main() {
 	args := flagSet.Args()
 	l := len(args)
 
+	if *newAreasFlag {
+		*allAreasFlag = true
+	}
+
 	if (*allAreasFlag && l != 0) || (!*allAreasFlag && l != 1) {
 		if l == 0 {
 			usage(flagSet, os.Stdout)
 			os.Exit(0)
 		}
 		if *allAreasFlag && l == 1 {
-			fmt.Fprint(os.Stderr, "Error: do not specify an area if '-all-areas' is given\n")
+			fmt.Fprint(os.Stderr, "Error: do not specify an area if '-all-areas' or '-new-areas' is given\n")
 			fmt.Fprintf(os.Stderr, "Try %s -help for help.\n", os.Args[0])
 		}
 		os.Exit(1)
@@ -179,6 +184,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	existingAreas := make(map[string]bool)
+
+	if *newAreasFlag {
+		areaStrings, err := nestsDBStore.GetNestAreas(ctx)
+		if err != nil {
+			logger.Fatalf("failed to get existing nest areas from DB: %v", err)
+		}
+		for _, area := range areaStrings {
+			existingAreas[area] = true
+		}
+	}
+
 	var overpassAreas []*geojson.Feature
 
 	if *allAreasFlag {
@@ -201,8 +218,25 @@ func main() {
 		overpassAreas = []*geojson.Feature{overpassArea}
 	}
 
+	areasProcessed := 0
+
 	for _, feature := range overpassAreas {
-		areaName, _ := feature.Properties["name"].(string)
+		parent, _ := feature.Properties["parent"].(string)
+		name, _ := feature.Properties["name"].(string)
+
+		if name == "" {
+			logger.Warnf("area seems to have no name. skipping.")
+			continue
+		}
+
+		areaName := areas.NewAreaName(parent, name)
+
+		if existingAreas[areaName.String()] {
+			logger.Infof("skipping area '%s': -new-areas flag was given and nests exist with this area",
+				areaName,
+			)
+			continue
+		}
 
 		overpassCli, err := overpass.NewClient(logger, cfg.Overpass.Url)
 		if err != nil {
@@ -225,9 +259,13 @@ func main() {
 		if err != nil {
 			logger.Fatal(err)
 		}
+
+		areasProcessed++
 	}
 
-	if dbRefresher != nil {
+	logger.Printf("imported %d area(s)", areasProcessed)
+
+	if areasProcessed > 0 && dbRefresher != nil {
 		logger.Infof("Gathering missing spawnpoints, running filters, and activating/deactivating nests...")
 		refreshConfig := filters.RefreshNestConfig{
 			Concurrency:       cfg.Filters.Concurrency,

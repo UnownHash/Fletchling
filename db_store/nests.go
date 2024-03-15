@@ -250,6 +250,8 @@ func (st *NestsDBStore) iterateNestsBatch(ctx context.Context, fn func(Nest) err
 		}
 	}
 
+	err = rows.Err()
+
 	return
 }
 
@@ -285,6 +287,7 @@ func (st *NestsDBStore) StreamNests(ctx context.Context, opts StreamNestsOpts, c
 	if err != nil {
 		return err
 	}
+
 	if numRows < 1000 {
 		return nil
 	}
@@ -442,7 +445,12 @@ func (st *NestsDBStore) GetInactiveNests(ctx context.Context) (nests []*Nest, er
 		return
 	}
 
-	defer func() { err = closeRows(rows, err) }()
+	defer func() {
+		err = closeRows(rows, err)
+		if err != nil {
+			nests = nil
+		}
+	}()
 
 	for rows.Next() {
 		var nest Nest
@@ -454,7 +462,9 @@ func (st *NestsDBStore) GetInactiveNests(ctx context.Context) (nests []*Nest, er
 		nests = append(nests, &nest)
 	}
 
-	return nests, nil
+	err = rows.Err()
+
+	return
 }
 
 func (st *NestsDBStore) GetActiveNests(ctx context.Context) (nests []*Nest, err error) {
@@ -465,7 +475,12 @@ func (st *NestsDBStore) GetActiveNests(ctx context.Context) (nests []*Nest, err 
 		return
 	}
 
-	defer func() { err = closeRows(rows, err) }()
+	defer func() {
+		err = closeRows(rows, err)
+		if err != nil {
+			nests = nil
+		}
+	}()
 
 	nests = make([]*Nest, 0)
 
@@ -479,45 +494,40 @@ func (st *NestsDBStore) GetActiveNests(ctx context.Context) (nests []*Nest, err 
 		nests = append(nests, &nest)
 	}
 
-	return nests, nil
+	err = rows.Err()
+
+	return
 }
 
-func (st *NestsDBStore) NestOverlapsPct(ctx context.Context, nestId int64, maxPercent float64) (matchingNest *Nest, overlapPct float64, err error) {
-	const intersectionPctB = "100 * ST_Area(ST_Intersection(a.polygon,b.polygon)) / ST_Area(a.polygon)"
-	const intersectionPctC = "100 * ST_Area(ST_Intersection(a.polygon,c.polygon)) / ST_Area(a.polygon)"
-	const overlapQuery = `
-	SELECT b.nest_id,b.name,` + intersectionPctB + `as percent
-		FROM nests a
-		INNER JOIN nests b ON (
-			b.nest_id = (
-				SELECT c.nest_id FROM nests c
-					WHERE c.active
-					    AND a.m2 < c.m2
-						AND ST_Intersects(a.polygon, c.polygon)
-						AND ` + intersectionPctC + ` > ?
-					LIMIT 1
-			)
-		)
-		WHERE a.nest_id=?`
+func (st *NestsDBStore) GetNestAreas(ctx context.Context) (areas []string, err error) {
+	const query = "SELECT DISTINCT(area_name) FROM nests where area_name is NOT NULL"
 
-	row := st.db.QueryRowxContext(
-		ctx,
-		overlapQuery,
-		maxPercent,
-		nestId,
-	)
-
-	var largerNestId int64
-
-	err = row.Scan(&largerNestId, &overlapPct)
+	rows, err := st.db.QueryxContext(ctx, query)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			err = nil
-		}
 		return
 	}
 
-	matchingNest, err = st.GetNestById(ctx, largerNestId)
+	defer func() {
+		err = closeRows(rows, err)
+		if err != nil {
+			areas = nil
+		}
+	}()
+
+	areas = make([]string, 0)
+
+	for rows.Next() {
+		var s string
+
+		if err = rows.Scan(&s); err != nil {
+			return
+		}
+
+		areas = append(areas, s)
+	}
+
+	err = rows.Err()
+
 	return
 }
 
