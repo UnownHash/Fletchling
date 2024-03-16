@@ -23,12 +23,6 @@ const (
 type Config struct {
 	// Whether to log the last stats period when processing
 	LogLastStatsPeriod bool `koanf:"log_last_stats_period" json:"log_last_stats_period"`
-	// how many spawnpoints required in the geofence in order to track.
-	MinSpawnpoints int `koanf:"min_spawnpoints" json:"min_spawnpoints"`
-	// minimum area required in order to track.
-	MinAreaM2 float64 `koanf:"min_area_m2" json:"min_area_m2"`
-	// maximum area that cannot be exceeded in order to track.
-	MaxAreaM2 float64 `koanf:"max_area_m2" json:"max_area_m2"`
 	// how often to rotate stats
 	RotationIntervalMinutes int `koanf:"rotation_interval_minutes" json:"rotation_interval_minutes"`
 	// Require this many horus of stats in order to produce the nesting pokemon and update the DB.
@@ -53,9 +47,6 @@ type Config struct {
 
 func (cfg *Config) writeConfiguration(buf *bytes.Buffer) {
 	buf.WriteString(fmt.Sprintf("log_last_stats_period: %t, ", cfg.LogLastStatsPeriod))
-	buf.WriteString(fmt.Sprintf("min_spawnpoints: %d, ", cfg.MinSpawnpoints))
-	buf.WriteString(fmt.Sprintf("min_area_m2: %0.3f, ", cfg.MinAreaM2))
-	buf.WriteString(fmt.Sprintf("max_area_m2: %0.3f, ", cfg.MaxAreaM2))
 	buf.WriteString(fmt.Sprintf("rotation_interval_minutes: %d(%s), ", cfg.RotationIntervalMinutes, cfg.RotationInterval()))
 	buf.WriteString(fmt.Sprintf("min_history_duration_hours: %d(%s), ", cfg.MinHistoryDurationHours, cfg.MinHistoryDuration()))
 	buf.WriteString(fmt.Sprintf("max_history_duration_hours: %d(%s), ", cfg.MaxHistoryDurationHours, cfg.MaxHistoryDuration()))

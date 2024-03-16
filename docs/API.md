@@ -25,6 +25,14 @@
 ## Get single nest and its stats history
 `curl http://localhost:9042/api/nests/_/:nest_id`
 
+## Enable debug logging
+
+`curl http://localhost:9042/debug/logging/on`
+
+## Disable debug logging
+
+`curl http://localhost:9042/debug/logging/off`
+
 Untested:
 
 ## Purge all stats

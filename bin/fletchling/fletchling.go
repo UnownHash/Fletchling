@@ -189,6 +189,18 @@ func main() {
 		return filtersConfig
 	}
 
+	logFiltersConfig := func(prefix string, cfg filters.Config) {
+		logger.Infof("%sconcurrency=%d, min_spawnpoints=%d, min_area_m2=%0.3f max_area_m2=%0.3f",
+			prefix,
+			cfg.Concurrency,
+			cfg.MinSpawnpoints,
+			cfg.MinAreaM2,
+			cfg.MaxAreaM2,
+		)
+	}
+
+	logFiltersConfig("STARTUP: Filters config loaded: ", cfg.Filters)
+
 	reloadFn := func() error {
 		cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
 		if err != nil {
@@ -198,6 +210,7 @@ func main() {
 		if err != nil {
 			return fmt.Errorf("failed to reload processor manager: %w", err)
 		}
+		logFiltersConfig("Filters config reloaded: ", cfg.Filters)
 		filtersConfigMutex.Lock()
 		defer filtersConfigMutex.Unlock()
 		filtersConfig = cfg.Filters
