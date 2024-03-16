@@ -61,6 +61,53 @@ type Nest struct {
 	Updated      null.Int    `db:"updated"`
 }
 
+func (nest *Nest) AsFeature() (*geojson.Feature, error) {
+	if nest.Polygon == nil {
+		return nil, fmt.Errorf("nest '%s' doesn't have 'polygon' loaded", nest.FullName())
+	}
+
+	geom, err := nest.Geometry()
+	if err != nil {
+		return nil, fmt.Errorf("nest '%s' has invalid geometry: %v", nest.FullName(), err)
+	}
+
+	areaName := nest.AreaName.ValueOrZero()
+	if splitted := strings.Split(areaName, "/"); len(splitted) == 2 {
+		areaName = splitted[1]
+	}
+
+	feature := geojson.NewFeature(geom.Geometry())
+	feature.Properties["name"] = nest.Name
+	feature.Properties["nest_id"] = nest.NestId
+	if areaName != "" {
+		feature.Properties["parent"] = areaName
+	}
+
+	return feature, nil
+}
+
+func (nest *Nest) FullName() string {
+	var namePrefix string
+	if an := nest.AreaName.ValueOrZero(); an != "" {
+		namePrefix = nest.AreaName.String + "/"
+	}
+	return fmt.Sprintf("%s%s(NestId:%d)", namePrefix, nest.Name, nest.NestId)
+}
+
+func (nest *Nest) Geometry() (*geojson.Geometry, error) {
+	var geom geojson.Geometry
+
+	err := json.Unmarshal(nest.Polygon, &geom)
+	if err != nil {
+		return nil, err
+	}
+	return &geom, nil
+}
+
+func (nest *Nest) UpdatedTime() time.Time {
+	return time.Unix(nest.Updated.ValueOrZero(), 0)
+}
+
 type NestsDBStore struct {
 	logger *logrus.Logger
 	db     *sqlx.DB
@@ -144,28 +191,6 @@ func (st *NestsDBStore) disableOverlappingNests(ctx context.Context, queryer dbQ
 	}
 
 	return 0, err
-}
-
-func (nest *Nest) FullName() string {
-	var namePrefix string
-	if an := nest.AreaName.ValueOrZero(); an != "" {
-		namePrefix = nest.AreaName.String + "/"
-	}
-	return fmt.Sprintf("%s%s(NestId:%d)", namePrefix, nest.Name, nest.NestId)
-}
-
-func (nest *Nest) Geometry() (*geojson.Geometry, error) {
-	var geom geojson.Geometry
-
-	err := json.Unmarshal(nest.Polygon, &geom)
-	if err != nil {
-		return nil, err
-	}
-	return &geom, nil
-}
-
-func (nest *Nest) UpdatedTime() time.Time {
-	return time.Unix(nest.Updated.ValueOrZero(), 0)
 }
 
 const (
@@ -373,6 +398,7 @@ func (st *NestsDBStore) IterateNestsConcurrently(ctx context.Context, opts Itera
 	)
 
 	if err != nil {
+		wg.Wait()
 		return err
 	}
 

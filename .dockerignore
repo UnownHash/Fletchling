@@ -5,6 +5,8 @@
 /.git
 /docker-compose.yml*
 /fletchling
+/fletchling-db-exporter
+/fletchling-db-refresher
 /fletchling-osm-importer
 /Makefile
 /configs

@@ -1,10 +1,10 @@
 package logging
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"path"
 
 	"github.com/sirupsen/logrus"
@@ -39,8 +39,8 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool) *logrus.Logger {
-	output := io.Writer(os.Stdout)
+func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool, teeWriter io.Writer) (*logrus.Logger, error) {
+	output := teeWriter
 
 	if cfg.Filename != "" && cfg.LogDir != "" {
 		lumberjackLogger := &lumberjack.Logger{
@@ -56,8 +56,14 @@ func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool) *logrus.Log
 			lumberjackLogger.Rotate()
 		}
 
-		// Fork writing into two outputs
-		output = io.MultiWriter(output, lumberjackLogger)
+		if output != nil {
+			// Fork writing into two outputs
+			output = io.MultiWriter(output, lumberjackLogger)
+		} else {
+			output = lumberjackLogger
+		}
+	} else if output == nil {
+		return nil, errors.New("CreateLogger: teeWriter is required when not Filename and LogDir are not set")
 	}
 
 	logFormatter := &PlainFormatter{
@@ -78,5 +84,5 @@ func (cfg *Config) CreateLogger(rotate bool, wrapStdlibDefault bool) *logrus.Log
 		log.SetOutput(logger.Writer())
 	}
 
-	return logger
+	return logger, nil
 }

@@ -48,6 +48,7 @@ func main() {
 	debugFlag := flagSet.Bool("debug", false, "override config and turn on debug logging")
 	flagSet.BoolVar(helpFlag, "h", false, "help!")
 	configFileFlag := flagSet.String("f", DEFAULT_CONFIG_FILENAME, "config file to use")
+	versionFlag := flagSet.Bool("version", false, "print the version of this tool and exit")
 
 	err := flagSet.Parse(os.Args[1:])
 	if err != nil {
@@ -58,6 +59,11 @@ func main() {
 
 	if *helpFlag {
 		usage(flagSet, os.Stdout)
+		os.Exit(0)
+	}
+
+	if *versionFlag {
+		fmt.Fprintf(os.Stdout, "%s\n", version.APP_VERSION)
 		os.Exit(0)
 	}
 
@@ -78,7 +84,10 @@ func main() {
 		cfg.Logging.Debug = true
 	}
 
-	logger := cfg.CreateLogger(true)
+	logger, err := cfg.CreateLogger(true, os.Stdout)
+	if err != nil {
+		log.Fatal(err)
+	}
 	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
 
 	statsCollector := stats_collector.GetStatsCollector(cfg)
