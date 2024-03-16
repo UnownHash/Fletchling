@@ -119,7 +119,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
+
+	//logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
 
 	// check destination first before we attempt to load
 	// area fences.
@@ -177,6 +178,7 @@ func main() {
 		if err != nil {
 			logger.Fatal(err)
 		}
+		return
 	}
 
 	areasProcessed := make(map[string]int)
@@ -228,8 +230,6 @@ func main() {
 			featureCollection.Append(feature)
 		}
 	}()
-
-	logger.Infof("Starting export...")
 
 	err = nestsDBStore.StreamNests(ctx, db_store.StreamNestsOpts{IncludePolygon: true}, nestsCh)
 	if err != nil {
