@@ -3,6 +3,7 @@ package app_config
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,8 +88,8 @@ func (cfg *Config) GetPrometheusConfig() stats_collector.PrometheusConfig {
 	return cfg.Prometheus
 }
 
-func (cfg *Config) CreateLogger(rotate bool) *logrus.Logger {
-	return cfg.Logging.CreateLogger(rotate, true)
+func (cfg *Config) CreateLogger(rotate bool, teeWriter io.Writer) (*logrus.Logger, error) {
+	return cfg.Logging.CreateLogger(rotate, true, teeWriter)
 }
 
 func (cfg *Config) Validate() error {
