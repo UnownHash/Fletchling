@@ -1,3 +1,5 @@
+FROM busybox:uclibc AS busybox
+
 # Build image
 FROM golang:1.22-alpine as build
 
@@ -13,6 +15,7 @@ RUN mkdir /empty-dir
 
 # Now copy it into our base image.
 FROM gcr.io/distroless/static-debian11 as runner
+COPY --from=busybox /bin/wget /usr/bin/wget
 COPY --from=build /empty-dir /fletchling/logs
 COPY --from=build /go/src/app/db_store/sql /fletchling/db_store/sql
 COPY --from=build /go/bin/fletchling /go/bin/fletchling-osm-importer /go/bin/sleep /fletchling/
