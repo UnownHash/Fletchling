@@ -49,7 +49,7 @@ func (srv *HTTPServer) setupRoutes() {
 
 	debugGroup := r.Group("/debug")
 
-	debugGroup.GET("/debug/logging/on", func(c *gin.Context) {
+	debugGroup.GET("/logging/on", func(c *gin.Context) {
 		srv.logger.SetLevel(logrus.DebugLevel)
 		resp := struct {
 			Message string `json:"message"`
@@ -57,7 +57,7 @@ func (srv *HTTPServer) setupRoutes() {
 		c.JSON(http.StatusOK, &resp)
 	})
 
-	debugGroup.GET("/debug/logging/off", func(c *gin.Context) {
+	debugGroup.GET("/logging/off", func(c *gin.Context) {
 		srv.logger.SetLevel(logrus.InfoLevel)
 		resp := struct {
 			Message string `json:"message"`

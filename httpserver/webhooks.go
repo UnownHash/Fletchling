@@ -135,7 +135,7 @@ func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
 	}
 
 	srv.statsCollector.AddPokemonProcessed(numProcessed)
-	srv.logger.Debugf("processed %d pokemon from single webhook in %s", numProcessed, time.Now().Sub(now).Truncate(time.Millisecond))
+	srv.logger.Debugf("processed %d pokemon from single webhook in %s", numProcessed, time.Now().Sub(now).Truncate(time.Microsecond))
 }
 
 func (srv *HTTPServer) handleWebhook(c *gin.Context) {

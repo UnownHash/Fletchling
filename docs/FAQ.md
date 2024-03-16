@@ -22,3 +22,7 @@ If nests were actually imported, there's only a couple of reasons why this can b
 * The spawnpoint DB queries are erroring, possibly due to wrong golbat_db configuration.
 
 After correcting the above, you can issue the `/api/config/reload?spawnpoints=all` API call to Fletchling to have it recompute everything and reload.
+
+## Spawnpoint count for a nest says 0, but I see spawnpoints in Koji 
+
+The spawnpoints are likely older than your 'max_spawnpoint_age_days' config setting.

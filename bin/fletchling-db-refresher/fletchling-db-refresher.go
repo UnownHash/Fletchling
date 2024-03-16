@@ -149,14 +149,13 @@ func main() {
 		}
 	}()
 
+	cfg.Filters.Log(logger, "Using config: ")
+
 	logger.Infof("Gathering missing spawnpoints, running filters, and activating/deactivating nests...")
 	refreshConfig := filters.RefreshNestConfig{
+		FiltersConfig:           cfg.Filters,
 		Concurrency:             cfg.Filters.Concurrency,
 		ForceSpawnpointsRefresh: *allSpawnpointsFlag,
-		MinAreaM2:               cfg.Filters.MinAreaM2,
-		MaxAreaM2:               cfg.Filters.MaxAreaM2,
-		MinSpawnpoints:          cfg.Filters.MinSpawnpoints,
-		MaxOverlapPercent:       cfg.Filters.MaxOverlapPercent,
 	}
 
 	err = dbRefresher.RefreshAllNests(ctx, refreshConfig)
