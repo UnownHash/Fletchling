@@ -268,11 +268,8 @@ func main() {
 	if areasProcessed > 0 && dbRefresher != nil {
 		logger.Infof("Gathering missing spawnpoints, running filters, and activating/deactivating nests...")
 		refreshConfig := filters.RefreshNestConfig{
-			Concurrency:       cfg.Filters.Concurrency,
-			MinAreaM2:         cfg.Filters.MinAreaM2,
-			MaxAreaM2:         cfg.Filters.MaxAreaM2,
-			MinSpawnpoints:    cfg.Filters.MinSpawnpoints,
-			MaxOverlapPercent: cfg.Filters.MaxOverlapPercent,
+			FiltersConfig: cfg.Filters,
+			Concurrency:   cfg.Filters.Concurrency,
 		}
 		err := dbRefresher.RefreshAllNests(ctx, refreshConfig)
 		if err == nil {

@@ -31,12 +31,9 @@ func (srv *HTTPServer) doDBRefresh(c *gin.Context, allSpawnpoints bool) error {
 	ctx := c.Request.Context()
 
 	refreshConfig := filters.RefreshNestConfig{
+		FiltersConfig:           filtersConfig,
 		Concurrency:             concurrency,
 		ForceSpawnpointsRefresh: allSpawnpoints,
-		MinAreaM2:               filtersConfig.MinAreaM2,
-		MaxAreaM2:               filtersConfig.MaxAreaM2,
-		MinSpawnpoints:          filtersConfig.MinSpawnpoints,
-		MaxOverlapPercent:       filtersConfig.MaxOverlapPercent,
 	}
 
 	srv.logger.Infof("starting nest refresh")

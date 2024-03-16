@@ -55,6 +55,9 @@ max_area_m2 = 10000000.0
 ## via an API call as long as golbat_db is configured above.
 min_spawnpoints = 10
 
+## Ignore spawnpoints older than this age when computing spawnpoint counts.
+max_spawnpoint_age_days = 7
+
 ## How much overlap with a larger nest to allow. If any nest overlaps
 ## with a larger nest by more than this percent, then the nest will be
 ## deactivated upon filtering. (default 60)
