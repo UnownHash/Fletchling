@@ -14,13 +14,9 @@ import (
 )
 
 type RefreshNestConfig struct {
+	FiltersConfig
 	Concurrency             int
 	ForceSpawnpointsRefresh bool
-
-	MinAreaM2         float64
-	MaxAreaM2         float64
-	MinSpawnpoints    int64
-	MaxOverlapPercent float64
 }
 
 type DBRefresher struct {
@@ -93,7 +89,7 @@ func (refresher *DBRefresher) refreshNest(ctx context.Context, config RefreshNes
 		if !spawnpoints.Valid {
 			refresher.logger.Infof("DB-REFRESHER[%s]: number of spawnpoints is unknown. Will query golbat for them.", fullName)
 		}
-		numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry)
+		numSpawnpoints, err := refresher.golbatDBStore.GetSpawnpointsCount(ctx, jsonGeometry, config.MaxSpawnpointAgeDays)
 		if err == nil {
 			if spawnpoints.Valid {
 				if spawnpoints.Int64 != numSpawnpoints {

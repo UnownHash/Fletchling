@@ -30,12 +30,7 @@ import (
 const (
 	DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
-	DEFAULT_FILTER_CONCURRENCY  = 4
-	DEFAULT_MIN_SPAWNPOINTS     = 10
-	DEFAULT_MIN_AREA_M2         = float64(100)
-	DEFAULT_MAX_AREA_M2         = float64(10000000)
-	DEFAULT_MAX_OVERLAP_PERCENT = float64(60)
-	DEFAULT_NEST_NAME           = "Unknown Nest"
+	DEFAULT_NEST_NAME = "Unknown Nest"
 )
 
 type KojiConfig struct {
@@ -72,7 +67,7 @@ type Config struct {
 	NestsDb         db_store.DBConfig                `koanf:"nests_db"`
 	GolbatDb        *db_store.DBConfig               `koanf:"golbat_db"`
 	Overpass        overpass.Config                  `koanf:"overpass"`
-	Filters         filters.Config                   `koanf:"filters"`
+	Filters         filters.FiltersConfig            `koanf:"filters"`
 	Importer        importer.Config                  `koanf:"importer"`
 	Areas           areas.Config                     `koanf:"areas"`
 	WebhookSettings webhook_sender.SettingsConfig    `koanf:"webhook_settings"`
@@ -148,6 +143,8 @@ func (cfg *Config) Validate() error {
 }
 
 func GetDefaultConfig() Config {
+	defaultFilters := filters.DefaultFiltersConfig()
+
 	return Config{
 		Areas: areas.GetDefaultConfig(),
 
@@ -159,17 +156,11 @@ func GetDefaultConfig() Config {
 
 		Importer: importer.Config{
 			DefaultName: DEFAULT_NEST_NAME,
-			MinAreaM2:   DEFAULT_MIN_AREA_M2,
-			MaxAreaM2:   DEFAULT_MAX_AREA_M2,
+			MinAreaM2:   defaultFilters.MinAreaM2,
+			MaxAreaM2:   defaultFilters.MaxAreaM2,
 		},
 
-		Filters: filters.Config{
-			Concurrency:       DEFAULT_FILTER_CONCURRENCY,
-			MinSpawnpoints:    DEFAULT_MIN_SPAWNPOINTS,
-			MinAreaM2:         DEFAULT_MIN_AREA_M2,
-			MaxAreaM2:         DEFAULT_MAX_AREA_M2,
-			MaxOverlapPercent: DEFAULT_MAX_OVERLAP_PERCENT,
-		},
+		Filters: defaultFilters,
 
 		WebhookSettings: webhook_sender.SettingsConfig{
 			FlushIntervalSeconds: 1,

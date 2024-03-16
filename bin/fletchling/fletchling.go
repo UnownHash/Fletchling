@@ -192,11 +192,13 @@ func main() {
 	var filtersConfigMutex sync.Mutex
 	filtersConfig := cfg.Filters
 
-	getFiltersConfigFn := func() filters.Config {
+	getFiltersConfigFn := func() filters.FiltersConfig {
 		filtersConfigMutex.Lock()
 		defer filtersConfigMutex.Unlock()
 		return filtersConfig
 	}
+
+	cfg.Filters.Log(logger, "STARTUP: Filters config loaded: ")
 
 	reloadFn := func() error {
 		cfg, err := app_config.LoadConfig(configFilename, defaultConfig)
@@ -207,6 +209,7 @@ func main() {
 		if err != nil {
 			return fmt.Errorf("failed to reload processor manager: %w", err)
 		}
+		cfg.Filters.Log(logger, "Filters config reloaded: ")
 		filtersConfigMutex.Lock()
 		defer filtersConfigMutex.Unlock()
 		filtersConfig = cfg.Filters

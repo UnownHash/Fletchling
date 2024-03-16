@@ -26,7 +26,7 @@ type HTTPServer struct {
 	statsCollector       stats_collector.StatsCollector
 	dbRefresher          *filters.DBRefresher
 	reloadFn             func() error
-	filtersConfigFn      func() filters.Config
+	filtersConfigFn      func() filters.FiltersConfig
 }
 
 // Run starts and runs the HTTP server until 'ctx' is cancelled or the server fails to start.
@@ -70,7 +70,7 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 	}
 }
 
-func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, dbRefresher *filters.DBRefresher, reloadFn func() error, filtersConfigFn func() filters.Config) (*HTTPServer, error) {
+func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, dbRefresher *filters.DBRefresher, reloadFn func() error, filtersConfigFn func() filters.FiltersConfig) (*HTTPServer, error) {
 	// Create the web server.
 	r := gin.New()
 	r.Use(gin.RecoveryWithWriter(logger.Writer()))

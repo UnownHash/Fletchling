@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func (srv *HTTPServer) authorizeAPI(c *gin.Context) {
@@ -47,6 +48,22 @@ func (srv *HTTPServer) setupRoutes() {
 	statsGroup.PUT("/purge/newest", srv.handlePurgeNewestStats)
 
 	debugGroup := r.Group("/debug")
+
+	debugGroup.GET("/debug/logging/on", func(c *gin.Context) {
+		srv.logger.SetLevel(logrus.DebugLevel)
+		resp := struct {
+			Message string `json:"message"`
+		}{"debug logging is on"}
+		c.JSON(http.StatusOK, &resp)
+	})
+
+	debugGroup.GET("/debug/logging/off", func(c *gin.Context) {
+		srv.logger.SetLevel(logrus.InfoLevel)
+		resp := struct {
+			Message string `json:"message"`
+		}{"debug logging is off"}
+		c.JSON(http.StatusOK, &resp)
+	})
 
 	// run the GC. I guess this is also available via '/debug/pprof/heap?gc=1"
 	debugGroup.PUT("/gc/flush", func(c *gin.Context) {
