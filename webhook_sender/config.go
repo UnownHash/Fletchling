@@ -24,12 +24,8 @@ func (cfg SettingsConfig) Validate() error {
 }
 
 type WebhookConfig struct {
-	Url string `koanf:"url"`
-	// leaving this out for now. would be nice to have the parent
-	// for the area. DB only has areaName. Before allowing this
-	// setting, let's think about it. We'll put in a */* entry for
-	// for now.
-	Areas   []string `koanf:"-"`
+	Url     string   `koanf:"url"`
+	Areas   []string `koanf:"areas"`
 	Headers []string `koanf:"headers"`
 }
 
@@ -45,9 +41,7 @@ func (cfg *WebhookConfig) HeadersAsMap() map[string]string {
 }
 
 func (cfg *WebhookConfig) AreaNames() []areas.AreaName {
-	//return geo.AreaStringsToAreaNames(cfg.Areas)
-	// see the struct:
-	return []areas.AreaName{areas.NewAreaName("", "*")}
+	return areas.AreaStringsToAreaNames(cfg.Areas)
 }
 
 func (cfg *WebhookConfig) Validate() error {

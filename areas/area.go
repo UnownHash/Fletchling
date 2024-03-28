@@ -58,6 +58,9 @@ func AreaStringsToAreaNames(areas []string) []AreaName {
 func AreaNameMatches(area AreaName, wildcardedAreas []AreaName) bool {
 	for _, wildcardedArea := range wildcardedAreas {
 		if wildcardedArea.Name == "*" {
+			if wildcardedArea.Parent == "*" {
+				return true
+			}
 			if wildcardedArea.Parent == area.Parent {
 				return true
 			}

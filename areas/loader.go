@@ -15,6 +15,7 @@ import (
 )
 
 type AreasCache struct {
+	logger   *logrus.Logger
 	areas    []*geojson.Feature
 	areasMap map[string]*geojson.Feature
 }
@@ -23,6 +24,10 @@ func (cache *AreasCache) SetAreas(areas []*geojson.Feature) *AreasCache {
 	areasMap := make(map[string]*geojson.Feature)
 	for _, area := range areas {
 		name, _ := area.Properties["name"].(string)
+		if name == "" {
+			cache.logger.Warn("skipping area with empty name. make sure name property is set.")
+			continue
+		}
 		areasMap[name] = area
 	}
 	cache.areas = areas
@@ -103,7 +108,7 @@ func (loader *AreasLoader) loadFromCache() error {
 		return err
 	}
 
-	loader.areasCache.Store((&AreasCache{}).SetAreas(areas))
+	loader.areasCache.Store((&AreasCache{logger: loader.logger}).SetAreas(areas))
 
 	return nil
 }
@@ -155,7 +160,7 @@ func (loader *AreasLoader) ReloadAreas(ctx context.Context) (err error) {
 		loader.logger.Infof("Loaded %d area(s) from file '%s'", len(areas), filename)
 	}
 
-	loader.areasCache.Store((&AreasCache{}).SetAreas(areas))
+	loader.areasCache.Store((&AreasCache{logger: loader.logger}).SetAreas(areas))
 	if cacheErr := loader.updateCache(areas); cacheErr == nil {
 		loader.logger.Info("Updated areas cache file")
 	} else {
