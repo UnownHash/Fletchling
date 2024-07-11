@@ -11,6 +11,7 @@ import (
 	"gopkg.in/guregu/null.v4"
 
 	"github.com/UnownHash/Fletchling/processor/models"
+	"github.com/UnownHash/Fletchling/util"
 )
 
 type decoderFn func([]byte, *WebhookMessage) error
@@ -91,6 +92,8 @@ func (wh *PokemonWebhook) EncounterIdAsInt() (uint64, error) {
 }
 
 func (srv *HTTPServer) processMessages(msgs []WebhookMessage) {
+	defer util.HandlePanic()
+
 	var numProcessed uint64
 
 	now := time.Now()

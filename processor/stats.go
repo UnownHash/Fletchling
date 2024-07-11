@@ -33,7 +33,7 @@ func (counts *CountsByPokemon) subtract(logger *logrus.Logger, other *CountsByPo
 				*other,
 			)
 		}
-		counts.ByPokemon = nil
+		counts.ByPokemon = make(map[models.PokemonKey]uint64)
 		return true
 	}
 

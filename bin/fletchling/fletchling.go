@@ -15,6 +15,7 @@ import (
 	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/pyroscope"
 	"github.com/UnownHash/Fletchling/stats_collector"
+	"github.com/UnownHash/Fletchling/util"
 	"github.com/UnownHash/Fletchling/version"
 	"github.com/UnownHash/Fletchling/webhook_sender"
 
@@ -88,6 +89,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	util.SetPanicLogger(logger)
+	defer util.HandlePanic()
+
 	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
 
 	statsCollector := stats_collector.GetStatsCollector(cfg)
@@ -109,6 +114,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
+		defer util.HandlePanic()
 		defer wg.Done()
 		defer cancelFn()
 
@@ -218,6 +224,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
+		defer util.HandlePanic()
 		defer wg.Done()
 		defer cancelFn()
 
@@ -243,6 +250,7 @@ func main() {
 
 	wg.Add(1)
 	go func() {
+		defer util.HandlePanic()
 		defer wg.Done()
 		// shut down everything else if this bails early
 		defer cancelFn()
@@ -257,6 +265,7 @@ func main() {
 	} else {
 		wg.Add(1)
 		go func() {
+			defer util.HandlePanic()
 			defer wg.Done()
 			defer cancelFn()
 

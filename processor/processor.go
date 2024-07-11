@@ -10,6 +10,7 @@ import (
 
 	"github.com/UnownHash/Fletchling/db_store"
 	"github.com/UnownHash/Fletchling/processor/models"
+	"github.com/UnownHash/Fletchling/util"
 )
 
 // NestProcessor is the pokemon nest processor.
@@ -257,6 +258,8 @@ func (np *NestProcessor) GetStatsSnapshot() *FrozenStatsCollection {
 }
 
 func (np *NestProcessor) ProcessStatsCollection(statsCollection *FrozenStatsCollection) {
+	defer util.HandlePanic()
+
 	np.LogConfiguration("PROCESSOR: time period processing starting with configuration: ", np.nestMatcher.Len())
 	defer np.logger.Infof("PROCESSOR: time period processing ending")
 

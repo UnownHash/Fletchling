@@ -13,6 +13,7 @@ import (
 	"github.com/UnownHash/Fletchling/filters"
 	"github.com/UnownHash/Fletchling/processor"
 	"github.com/UnownHash/Fletchling/stats_collector"
+	"github.com/UnownHash/Fletchling/util"
 )
 
 func init() {
@@ -39,6 +40,8 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 	doneCh := make(chan error, 1)
 
 	go func() {
+		defer util.HandlePanic()
+
 		var err error
 		defer func() {
 			doneCh <- err

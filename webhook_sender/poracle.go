@@ -15,6 +15,7 @@ import (
 	"github.com/UnownHash/Fletchling/areas"
 	"github.com/UnownHash/Fletchling/geo"
 	"github.com/UnownHash/Fletchling/processor/models"
+	"github.com/UnownHash/Fletchling/util"
 )
 
 type NestWebhookMessage struct {
@@ -166,12 +167,15 @@ func (sender *PoracleSender) AddNestWebhook(nest *models.Nest, ni *models.Nestin
 // Flush will send the collected webhooks. This is meant to be used after
 // the web server has been shut down and before the program exits.
 func (sender *PoracleSender) Flush() {
+	defer util.HandlePanic()
+
 	var wg sync.WaitGroup
 
 	messages := sender.popNestMessagesFromQueue()
 	for _, destination := range sender.destinations {
 		wg.Add(1)
 		go func(destination *webhookDestination) {
+			defer util.HandlePanic()
 			defer wg.Done()
 			destination.sendMessages(messages)
 		}(destination)

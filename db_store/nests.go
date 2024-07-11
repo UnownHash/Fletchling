@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/UnownHash/Fletchling/util"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	migrate_mysql "github.com/golang-migrate/migrate/v4/database/mysql"
@@ -364,6 +365,7 @@ func (st *NestsDBStore) IterateNestsConcurrently(ctx context.Context, opts Itera
 	for _ = range opts.Concurrency {
 		wg.Add(1)
 		go func() {
+			defer util.HandlePanic()
 			defer wg.Done()
 			for {
 				select {
