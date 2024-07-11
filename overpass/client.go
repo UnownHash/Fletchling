@@ -142,10 +142,12 @@ var searchSuffix = `];
     way["landuse"~"farmland|farmyard|grass|greenfield|meadow|orchard|recreation_ground|vineyard"];
     way["leisure"~"garden|golf_course|nature_reserve|park|pitch|playground|recreation_ground"];
     way["natural"~"grassland|heath|moor|plateau|scrub"];
+    way["tourism"~"zoo"];
 
     rel["landuse"~"farmland|farmyard|grass|greenfield|meadow|orchard|recreation_ground|vineyard"];
     rel["leisure"~"garden|golf_course|nature_reserve|park|pitch|playground|recreation_ground"];
     rel["natural"~"grassland|heath|moor|plateau|scrub"];
+    rel["tourism"~"zoo"];
 );
 out body;
 >;
