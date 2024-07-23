@@ -39,13 +39,18 @@ func (cfg *Config) Validate() error {
 			return fmt.Errorf("'areas.koji_url' looks malformed: '%s'(%s) does not start with '%s'", uri.Path, uri.String(), fcStr)
 		}
 
-		cfg.KojiProject = uri.Path[len(fcStr):]
+		for i, s := range strings.Split(cfg.KojiUrl, fcStr) {
+			switch i {
+			case 0:
+				cfg.KojiBaseUrl = s
+			case 1:
+				cfg.KojiProject = s
+			}
+		}
+
 		if cfg.KojiProject == "" {
 			return fmt.Errorf("'areas.koji_url' looks malformed: the project is missing")
 		}
-
-		uri.Path = ""
-		cfg.KojiBaseUrl = uri.String()
 
 		return nil
 	}
