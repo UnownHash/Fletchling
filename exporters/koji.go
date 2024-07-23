@@ -2,6 +2,7 @@ package exporters
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/paulmach/orb/geojson"
 	"github.com/sirupsen/logrus"
@@ -10,9 +11,10 @@ import (
 )
 
 type KojiExporter struct {
-	logger      *logrus.Logger
-	kojiCli     *koji_client.APIClient
-	projectName string
+	logger        *logrus.Logger
+	kojiCli       *koji_client.APIClient
+	projectName   string
+	projectParams url.Values
 }
 
 func (*KojiExporter) ExporterName() string {
@@ -20,7 +22,7 @@ func (*KojiExporter) ExporterName() string {
 }
 
 func (exporter *KojiExporter) ExportFeatures(ctx context.Context) ([]*geojson.Feature, error) {
-	fc, err := exporter.kojiCli.GetFeatureCollection(ctx, exporter.projectName)
+	fc, err := exporter.kojiCli.GetFeatureCollection(ctx, exporter.projectName, exporter.projectParams)
 	if err != nil {
 		return nil, err
 	}
@@ -47,11 +49,12 @@ func (exporter *KojiExporter) ExportFeatures(ctx context.Context) ([]*geojson.Fe
 
 }
 
-func NewKojiExporter(logger *logrus.Logger, kojiCli *koji_client.APIClient, projectName string) (*KojiExporter, error) {
+func NewKojiExporter(logger *logrus.Logger, kojiCli *koji_client.APIClient, projectName string, projectParams url.Values) (*KojiExporter, error) {
 	exporter := &KojiExporter{
-		logger:      logger,
-		kojiCli:     kojiCli,
-		projectName: projectName,
+		logger:        logger,
+		kojiCli:       kojiCli,
+		projectName:   projectName,
+		projectParams: projectParams,
 	}
 	return exporter, nil
 }

@@ -17,9 +17,10 @@ type Config struct {
 	CacheDir      string `koanf:"cache_dir"`
 	CacheFilename string `koanf:"cache_filename"`
 
-	// computed during validation
-	KojiBaseUrl string `koanf:"-"`
-	KojiProject string `koanf:"-"`
+	// computed during validation:
+	KojiBaseUrl       string     `koanf:"-"`
+	KojiProject       string     `koanf:"-"`
+	KojiProjectParams url.Values `koanf:"-"`
 }
 
 func (cfg *Config) Validate() error {
@@ -44,7 +45,9 @@ func (cfg *Config) Validate() error {
 			return fmt.Errorf("'areas.koji_url' looks malformed: the project is missing")
 		}
 
+		cfg.KojiProjectParams = uri.Query()
 		uri.Path = ""
+		uri.RawQuery = ""
 		cfg.KojiBaseUrl = uri.String()
 
 		return nil

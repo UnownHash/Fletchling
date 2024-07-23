@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync/atomic"
@@ -48,13 +49,14 @@ func (cache *AreasCache) GetArea(areaName string) *geojson.Feature {
 }
 
 type AreasLoader struct {
-	logger        *logrus.Logger
-	kojiClient    *koji_client.APIClient
-	kojiProject   string
-	filename      string
-	cacheDir      string
-	cacheFilename string
-	areasCache    atomic.Pointer[AreasCache]
+	logger            *logrus.Logger
+	kojiClient        *koji_client.APIClient
+	kojiProject       string
+	kojiProjectParams url.Values
+	filename          string
+	cacheDir          string
+	cacheFilename     string
+	areasCache        atomic.Pointer[AreasCache]
 }
 
 func (loader *AreasLoader) FullCachePath() string {
@@ -145,7 +147,7 @@ func (loader *AreasLoader) ReloadAreas(ctx context.Context) (err error) {
 		loader.logger.Infof("Reloading areas from koji project '%s'", loader.kojiProject)
 
 		var fc *geojson.FeatureCollection
-		fc, err = loader.kojiClient.GetFeatureCollection(ctx, loader.kojiProject)
+		fc, err = loader.kojiClient.GetFeatureCollection(ctx, loader.kojiProject, loader.kojiProjectParams)
 		if err != nil {
 			return
 		}
@@ -183,6 +185,7 @@ func NewAreasLoader(logger *logrus.Logger, config Config) (*AreasLoader, error) 
 
 	if config.Filename == "" {
 		loader.kojiProject = config.KojiProject
+		loader.kojiProjectParams = config.KojiProjectParams
 		loader.kojiClient, err = koji_client.NewAPIClient(
 			logger,
 			config.KojiBaseUrl,

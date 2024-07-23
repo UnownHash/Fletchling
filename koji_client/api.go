@@ -56,8 +56,13 @@ func (cli *APIClient) makePublicRequest(ctx context.Context, method, url_str str
 	return resp, nil
 }
 
-func (cli *APIClient) GetFeatureCollection(ctx context.Context, project string) (*geojson.FeatureCollection, error) {
-	resp, err := cli.makePublicRequest(ctx, "GET", "/geofence/feature-collection/"+project, nil)
+func (cli *APIClient) GetFeatureCollection(ctx context.Context, project string, params url.Values) (*geojson.FeatureCollection, error) {
+	urlPath := "/geofence/feature-collection/" + project
+	if paramsStr := params.Encode(); paramsStr != "" {
+		urlPath += "?" + paramsStr
+	}
+
+	resp, err := cli.makePublicRequest(ctx, "GET", urlPath, nil)
 	if err != nil {
 		return nil, err
 	}

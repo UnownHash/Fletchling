@@ -3,6 +3,7 @@ package nest_loader
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/sirupsen/logrus"
 
@@ -12,10 +13,11 @@ import (
 )
 
 type KojiNestLoader struct {
-	logger       *logrus.Logger
-	kojiCli      *koji_client.APIClient
-	projectName  string
-	nestsDBStore *db_store.NestsDBStore
+	logger        *logrus.Logger
+	kojiCli       *koji_client.APIClient
+	projectName   string
+	projectParams url.Values
+	nestsDBStore  *db_store.NestsDBStore
 }
 
 func (*KojiNestLoader) LoaderName() string {
@@ -23,7 +25,7 @@ func (*KojiNestLoader) LoaderName() string {
 }
 
 func (loader *KojiNestLoader) LoadNests(ctx context.Context) ([]*models.Nest, error) {
-	fc, err := loader.kojiCli.GetFeatureCollection(ctx, loader.projectName)
+	fc, err := loader.kojiCli.GetFeatureCollection(ctx, loader.projectName, loader.projectParams)
 	if err != nil {
 		return nil, err
 	}
@@ -69,12 +71,13 @@ func (loader *KojiNestLoader) LoadNests(ctx context.Context) ([]*models.Nest, er
 	return kojiNests, nil
 }
 
-func NewKojiNestLoader(logger *logrus.Logger, kojiCli *koji_client.APIClient, projectName string, nestsDBStore *db_store.NestsDBStore) *KojiNestLoader {
+func NewKojiNestLoader(logger *logrus.Logger, kojiCli *koji_client.APIClient, projectName string, projectParams url.Values, nestsDBStore *db_store.NestsDBStore) *KojiNestLoader {
 	st := &KojiNestLoader{
-		logger:       logger,
-		kojiCli:      kojiCli,
-		projectName:  projectName,
-		nestsDBStore: nestsDBStore,
+		logger:        logger,
+		kojiCli:       kojiCli,
+		projectName:   projectName,
+		projectParams: projectParams,
+		nestsDBStore:  nestsDBStore,
 	}
 	return st
 }
