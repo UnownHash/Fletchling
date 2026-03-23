@@ -2,6 +2,7 @@ package db_store
 
 import (
 	"context"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/paulmach/orb/geojson"
@@ -52,6 +53,8 @@ func NewGolbatDBStore(config DBConfig, logger *logrus.Logger) (*GolbatDBStore, e
 	}
 	db.SetMaxOpenConns(config.MaxPool)
 	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	return &GolbatDBStore{
 		logger: logger,

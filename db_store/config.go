@@ -38,6 +38,9 @@ func (cfg *DBConfig) AsDSN() string {
 }
 
 func (cfg *DBConfig) Validate() error {
-	_, err := sqlx.Connect("mysql", cfg.AsDSN())
-	return err
+	db, err := sqlx.Connect("mysql", cfg.AsDSN())
+	if err != nil {
+		return err
+	}
+	return db.Close()
 }
