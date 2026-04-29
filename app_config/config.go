@@ -29,7 +29,7 @@ import (
 
 const (
 	DEFAULT_OVERPASS_URL        = "https://overpass-api.de/api/interpreter"
-	DEFAULT_OVERPASS_USER_AGENT = "Fletchling MAGI importer contact: your-email@example.com"
+	DEFAULT_OVERPASS_USER_AGENT = "Fletchling-USR-OSM-Importer/1.0 contact: overpass@mymail.fiy"
 
 	DEFAULT_NEST_NAME = "Unknown Nest"
 )
