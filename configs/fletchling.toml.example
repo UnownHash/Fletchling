@@ -145,3 +145,6 @@ no_nesting_pokemon_age_hours = 12
 # In case there's a need to change this:
 [overpass]
 #url = "https://overpass-api.de/api/interpreter"
+## User-Agent header sent with overpass requests. Replace the email with your own
+## contact address so the overpass operators can reach you if there are issues.
+user_agent = "Fletchling USER importer contact: overpass@mymail.fyi"

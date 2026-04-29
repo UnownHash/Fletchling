@@ -32,6 +32,7 @@ var (
 type Client struct {
 	logger     *logrus.Logger
 	apiUrl     string
+	userAgent  string
 	httpClient *http.Client
 }
 
@@ -42,6 +43,9 @@ func (cli *Client) doSingleQuery(ctx context.Context, v url.Values) (*osm.OSM, e
 	}
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if cli.userAgent != "" {
+		req.Header.Set("User-Agent", cli.userAgent)
+	}
 
 	resp, err := cli.httpClient.Do(req)
 	if err != nil {
@@ -120,7 +124,7 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 	}
 }
 
-func NewClient(logger *logrus.Logger, apiUrl string) (*Client, error) {
+func NewClient(logger *logrus.Logger, apiUrl string, userAgent string) (*Client, error) {
 	if logger == nil {
 		return nil, errors.New("No logger given")
 	}
@@ -130,6 +134,7 @@ func NewClient(logger *logrus.Logger, apiUrl string) (*Client, error) {
 	return &Client{
 		logger:     logger,
 		apiUrl:     apiUrl,
+		userAgent:  userAgent,
 		httpClient: &http.Client{},
 	}, nil
 }
