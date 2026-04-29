@@ -247,7 +247,7 @@ func main() {
 			continue
 		}
 
-		overpassCli, err := overpass.NewClient(logger, cfg.Overpass.Url)
+		overpassCli, err := overpass.NewClient(logger, cfg.Overpass.Url, cfg.Overpass.UserAgent)
 		if err != nil {
 			logger.Fatalf("failed to create overpass client for area %s: %v", areaName, err)
 		}

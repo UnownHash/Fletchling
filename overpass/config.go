@@ -3,7 +3,8 @@ package overpass
 import "errors"
 
 type Config struct {
-	Url string `koanf:"url" json:"url"`
+	Url       string `koanf:"url"`
+	UserAgent string `koanf:"user_agent"`
 }
 
 func (cfg *Config) Validate() error {

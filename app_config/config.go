@@ -28,7 +28,8 @@ import (
 )
 
 const (
-	DEFAULT_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+	DEFAULT_OVERPASS_URL        = "https://overpass-api.de/api/interpreter"
+	DEFAULT_OVERPASS_USER_AGENT = "Fletchling MAGI importer contact: your-email@example.com"
 
 	DEFAULT_NEST_NAME = "Unknown Nest"
 )
@@ -151,7 +152,8 @@ func GetDefaultConfig() Config {
 		Processor: processor.GetDefaultConfig(),
 
 		Overpass: overpass.Config{
-			Url: DEFAULT_OVERPASS_URL,
+			Url:       DEFAULT_OVERPASS_URL,
+			UserAgent: DEFAULT_OVERPASS_USER_AGENT,
 		},
 
 		Importer: importer.Config{
