@@ -367,7 +367,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (code) (rate(fletchling_gin_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum by (code) (rate(gin_gin_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
           "legendFormat": "{{code}}",
           "refId": "A"
         }
@@ -392,7 +392,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum by (path, method) (rate(fletchling_gin_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
+          "expr": "sum by (path, method) (rate(gin_gin_requests_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval]))",
           "legendFormat": "{{method}} {{path}}",
           "refId": "A"
         }
@@ -417,19 +417,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.50, sum by (le) (rate(fletchling_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(gin_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(fletchling_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(gin_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(fletchling_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gin_gin_request_duration_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -454,13 +454,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(fletchling_gin_request_size_bytes_sum{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) / clamp_min(sum(rate(fletchling_gin_request_size_bytes_count{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])), 1)",
+          "expr": "sum(rate(gin_gin_request_size_bytes_sum{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) / clamp_min(sum(rate(gin_gin_request_size_bytes_count{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])), 1)",
           "legendFormat": "request avg",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "sum(rate(fletchling_gin_response_size_bytes_sum{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) / clamp_min(sum(rate(fletchling_gin_response_size_bytes_count{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])), 1)",
+          "expr": "sum(rate(gin_gin_response_size_bytes_sum{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])) / clamp_min(sum(rate(gin_gin_response_size_bytes_count{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])), 1)",
           "legendFormat": "response avg",
           "refId": "B"
         }
@@ -618,7 +618,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "fletchling_go_goroutines{job=\"$job\", instance=~\"$instance\"}",
+          "expr": "go_goroutines{job=\"$job\", instance=~\"$instance\"}",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
@@ -643,19 +643,19 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "fletchling_go_memory_classes_heap_objects_bytes{job=\"$job\", instance=~\"$instance\"}",
+          "expr": "go_memory_classes_heap_objects_bytes{job=\"$job\", instance=~\"$instance\"}",
           "legendFormat": "heap objects - {{instance}}",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "fletchling_go_memory_classes_heap_free_bytes{job=\"$job\", instance=~\"$instance\"}",
+          "expr": "go_memory_classes_heap_free_bytes{job=\"$job\", instance=~\"$instance\"}",
           "legendFormat": "heap free - {{instance}}",
           "refId": "B"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "fletchling_go_memory_classes_total_bytes{job=\"$job\", instance=~\"$instance\"}",
+          "expr": "go_memory_classes_total_bytes{job=\"$job\", instance=~\"$instance\"}",
           "legendFormat": "total - {{instance}}",
           "refId": "C"
         }
@@ -680,13 +680,13 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(fletchling_go_gc_pauses_seconds_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(go_gc_pauses_seconds_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
           "legendFormat": "p95",
           "refId": "A"
         },
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "histogram_quantile(0.99, sum by (le) (rate(fletchling_go_gc_pauses_seconds_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(go_gc_pauses_seconds_bucket{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])))",
           "legendFormat": "p99",
           "refId": "B"
         }
@@ -711,7 +711,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${datasource}" },
-          "expr": "rate(fletchling_go_gc_cycles_total_gc_cycles_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])",
+          "expr": "rate(go_gc_cycles_total_gc_cycles_total{job=\"$job\", instance=~\"$instance\"}[$__rate_interval])",
           "legendFormat": "{{instance}}",
           "refId": "A"
         }
