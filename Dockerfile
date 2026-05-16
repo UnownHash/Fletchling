@@ -1,7 +1,7 @@
 FROM busybox:uclibc AS busybox
 
 # Build image
-FROM golang:1.22-alpine as build
+FROM golang:1.26-alpine as build
 
 WORKDIR /go/src/app
 
