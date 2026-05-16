@@ -96,7 +96,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION, version.GetGitSHA())
+	logger.Infof("STARTUP: Version %s[%s]. Config loaded.", version.APP_VERSION, version.GetGitSHA())
 
 	// check destination first before we attempt to load
 	// area fences.

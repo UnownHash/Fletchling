@@ -5,10 +5,14 @@ FROM golang:1.26-alpine AS build
 
 WORKDIR /go/src/app
 
+# Install git to embed sha into binaries
+RUN apk --no-cache add git
+
 COPY . .
 RUN find db_store/sql -name '*~' -delete
 RUN if [ ! -f vendor/modules.txt ]; then go mod download; fi
 RUN go generate ./...
+
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -tags go_json -o /go/bin/fletchling ./bin/fletchling
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /go/bin/fletchling-osm-importer ./bin/fletchling-osm-importer
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /go/bin/fletchling-db-refresher ./bin/fletchling-db-refresher

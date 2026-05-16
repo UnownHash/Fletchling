@@ -89,7 +89,7 @@ func (srv *HTTPServer) handleGetConfig(c *gin.Context) {
 	type getConfigResponse struct {
 		Config  configResponse `json:"config"`
 		Version string         `json:"version"`
-		GitSHA  string         `json:"git_sha'`
+		GitSHA  string         `json:"git_sha"`
 	}
 
 	resp := getConfigResponse{
