@@ -1,52 +1,238 @@
-name: publish
+name: publish-fletchling
 
 on: [push]
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  GO_VERSION: '1.26.x'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.22.x'
+          go-version: ${{ env.GO_VERSION }}
+      - name: Generate code
+        run: go generate ./...
       - name: Install dependencies
         run: go get ./...
       - name: Test with the Go CLI
-        run: go test -v ./...
-  build-and-push-image:
-    runs-on: ubuntu-latest
+        run: go test -race -v ./...
+      - name: Run go vet static analysis
+        run: go vet ./...
+
+  build:
     needs: [test]
+    runs-on: ${{ matrix.os }}
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            arch: linux/amd64
+          - os: ubuntu-24.04-arm
+            arch: linux/arm64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: actions/checkout@v6
+      - name: Prepare
+        run: |
+          platform=${{ matrix.arch }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+      - name: downcase GHCR_REPO
+        run: |
+          echo "GHCR_REPO=${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}/fletchling" >>${GITHUB_ENV}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.GHCR_REPO }}
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.arch }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,"name=${{ env.GHCR_REPO }}",push-by-digest=true,name-canonical=true,push=true
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+      - name: Extract binaries from build
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.arch }}
+          outputs: type=local,dest=${{ runner.temp }}/image-out
+      - name: Upload binaries
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fletchling-binaries-${{ env.PLATFORM_PAIR }}
+          path: |
+            ${{ runner.temp }}/image-out/fletchling/fletchling
+            ${{ runner.temp }}/image-out/fletchling/fletchling-osm-importer
+            ${{ runner.temp }}/image-out/fletchling/fletchling-db-refresher
+            ${{ runner.temp }}/image-out/fletchling/fletchling-db-exporter
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-docker-builds:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: downcase GHCR_REPO
+        run: |
+          echo "GHCR_REPO=${{ env.REGISTRY }}/${GITHUB_REPOSITORY,,}/fletchling" >>${GITHUB_ENV}
+      - name: Read version
+        id: version
+        run: |
+          ver=$(cat version/version.txt | tr -d '[:space:]')
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [[ "$ver" =~ ^[0-9.]+$ ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/testing" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
+            ver="${ver}-testing"
+          fi
+          echo "value=v${ver}" >> $GITHUB_OUTPUT
+      - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+          images: ${{ env.GHCR_REPO }}
+          tags: |
+            type=ref,event=branch
+            type=raw,value=${{ steps.version.outputs.value }},enable=${{ steps.version.outputs.should_release == 'true' }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+          $(printf '${{ env.GHCR_REPO }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.GHCR_REPO }}:${{ steps.meta.outputs.version }}
+
+  release:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/testing'
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - arch: linux-amd64
+          - arch: linux-arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Read version
+        id: version
+        run: |
+          ver=$(cat version/version.txt | tr -d '[:space:]')
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [[ "$ver" =~ ^[0-9.]+$ ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" = "refs/heads/testing" ] && [[ ! "$ver" =~ ^[0-9.]+$ ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
+            ver="${ver}-testing"
+          fi
+          echo "value=v${ver}" >> $GITHUB_OUTPUT
+      - name: Download binaries
+        if: steps.version.outputs.should_release == 'true'
+        uses: actions/download-artifact@v4
         with:
-          context: .
-          labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          name: fletchling-binaries-${{ matrix.arch }}
+          path: ${{ runner.temp }}/binaries
+      - name: Create binary tar.gz
+        if: steps.version.outputs.should_release == 'true'
+        run: |
+          dir_name="fletchling-${{ steps.version.outputs.value }}"
+          mkdir -p "${{ runner.temp }}/${dir_name}/docs"
+          cp -p ${{ runner.temp }}/binaries/fletchling "${{ runner.temp }}/${dir_name}/"
+          cp -p ${{ runner.temp }}/binaries/fletchling-osm-importer "${{ runner.temp }}/${dir_name}/"
+          cp -p ${{ runner.temp }}/binaries/fletchling-db-refresher "${{ runner.temp }}/${dir_name}/"
+          cp -p ${{ runner.temp }}/binaries/fletchling-db-exporter "${{ runner.temp }}/${dir_name}/"
+          chmod 755 "${{ runner.temp }}/${dir_name}/fletchling"
+          chmod 755 "${{ runner.temp }}/${dir_name}/fletchling-osm-importer"
+          chmod 755 "${{ runner.temp }}/${dir_name}/fletchling-db-refresher"
+          chmod 755 "${{ runner.temp }}/${dir_name}/fletchling-db-exporter"
+          cp -p docs/*.md "${{ runner.temp }}/${dir_name}/docs/"
+          tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" \
+            -C "${{ runner.temp }}" "${dir_name}"
+      - name: Create source tar.gz
+        if: steps.version.outputs.should_release == 'true' && matrix.arch == 'linux-amd64'
+        run: |
+          tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" \
+            --transform "s,^\./,fletchling-${{ steps.version.outputs.value }}-src/," \
+            --exclude='.git' \
+            -C "${{ github.workspace }}" .
+      - name: Upload release assets
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="fletchling-${{ steps.version.outputs.value }}"
+          # Create release if it doesn't exist
+          gh release create "$tag" --title "$tag" --notes "Fletchling ${{ steps.version.outputs.value }}" 2>/dev/null || true
+          # Upload binary tarball
+          gh release upload "$tag" \
+            "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" --clobber
+          # Upload source tarball (only from one matrix leg)
+          if [ "${{ matrix.arch }}" = "linux-amd64" ]; then
+            gh release upload "$tag" \
+              "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" --clobber
+          fi
