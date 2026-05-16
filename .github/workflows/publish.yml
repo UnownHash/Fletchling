@@ -213,26 +213,20 @@ jobs:
           cp -p docs/*.md "${{ runner.temp }}/${dir_name}/docs/"
           tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" \
             -C "${{ runner.temp }}" "${dir_name}"
-      - name: Create source tar.gz
-        if: steps.version.outputs.should_release == 'true' && matrix.arch == 'linux-amd64'
-        run: |
-          tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" \
-            --transform "s,^\./,fletchling-${{ steps.version.outputs.value }}-src/," \
-            --exclude='.git' \
-            -C "${{ github.workspace }}" .
       - name: Upload release assets
         if: steps.version.outputs.should_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="fletchling-${{ steps.version.outputs.value }}"
+          prerelease_flag=""
+          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
+            prerelease_flag="--prerelease"
+          fi
           # Create release if it doesn't exist
-          gh release create "$tag" --title "$tag" --notes "Fletchling ${{ steps.version.outputs.value }}" 2>/dev/null || true
+          gh release create "$tag" --target "${{ github.ref_name }}" \
+            $prerelease_flag \
+            --title "$tag" --notes "Fletchling ${{ steps.version.outputs.value }}" 2>/dev/null || true
           # Upload binary tarball
           gh release upload "$tag" \
             "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" --clobber
-          # Upload source tarball (only from one matrix leg)
-          if [ "${{ matrix.arch }}" = "linux-amd64" ]; then
-            gh release upload "$tag" \
-              "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" --clobber
-          fi
