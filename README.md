@@ -54,6 +54,40 @@ You will need to have at least golang 1.22.1 installed. It is rather new as of t
 2. Check the logs in logs/ (or the log_dir that you configured in fletchling.toml) for errors.
    * Every minute, a log message will appear saying how many pokemon were processed. If this is 0, it means that Fletchling is not getting any webhooks. Check your Golbat webhooks configuration. Check the address Fletchling is listening on (http section in config).
 
+# Prometheus / Grafana
+
+Fletchling exposes Prometheus metrics (webhook processing counters, HTTP stats, Go runtime, and process metrics) on the same listen address as the API, at `/metrics`. The endpoint is **disabled by default** — you must opt in.
+
+## 1. Enable the metrics endpoint in Fletchling
+
+Edit `configs/fletchling.toml` and uncomment the `enabled` line:
+
+```toml
+[prometheus]
+enabled = true
+```
+
+Restart Fletchling. Verify it works: `curl http://127.0.0.1:9042/metrics` should return a long list of `fletchling_*` metrics. If you get `404 page not found`, the endpoint isn't enabled — recheck your config.
+
+## 2. Scrape it with Zapdos
+
+[Zapdos](https://github.com/UnownHash/Zapdos) is the UnownHash metrics stack (VmAgent + VictoriaMetrics + Grafana). Follow its docs to get the stack running, then add a scrape job for Fletchling in your `prometheus.yml`:
+
+```yml
+scrape_configs:
+  - job_name: 'fletchling'
+    static_configs:
+      - targets: ['fletchling:9042']   # docker; for pm2 use 127.0.0.1:9042
+        labels:
+          instance: 'fletchling'
+```
+
+Reload VmAgent so the new target is picked up.
+
+## 3. Import the dashboard
+
+A Grafana dashboard covering all exposed metrics is included at [`grafana/fletchling-dashboard.json`](grafana/fletchling-dashboard.json). In Grafana: **Dashboards → New → Import**, upload the file, and select your VictoriaMetrics/Prometheus datasource.
+
 # Migrating from other nest processors
 
 ## nestcollector to Fletching using existing Golbat DB for nests (SIMPLEST)
