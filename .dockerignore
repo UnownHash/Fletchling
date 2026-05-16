@@ -2,7 +2,6 @@
 .dockerignore
 *.example
 /logs
-/.git
 /docker-compose.yml*
 /fletchling
 /fletchling-db-exporter

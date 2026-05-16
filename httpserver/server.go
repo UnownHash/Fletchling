@@ -22,6 +22,7 @@ func init() {
 
 type HTTPServer struct {
 	logger               *logrus.Logger
+	gitSHA               string
 	ginRouter            *gin.Engine
 	nestProcessorManager *processor.NestProcessorManager
 	statsCollector       stats_collector.StatsCollector
@@ -73,7 +74,7 @@ func (srv *HTTPServer) Run(ctx context.Context, address string, shutdownWaitTime
 	}
 }
 
-func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, dbRefresher *filters.DBRefresher, reloadFn func() error, filtersConfigFn func() filters.FiltersConfig) (*HTTPServer, error) {
+func NewHTTPServer(logger *logrus.Logger, gitSHA string, nestProcessorManager *processor.NestProcessorManager, statsCollector stats_collector.StatsCollector, dbRefresher *filters.DBRefresher, reloadFn func() error, filtersConfigFn func() filters.FiltersConfig) (*HTTPServer, error) {
 	// Create the web server.
 	r := gin.New()
 	r.Use(gin.RecoveryWithWriter(logger.Writer()))
@@ -81,6 +82,7 @@ func NewHTTPServer(logger *logrus.Logger, nestProcessorManager *processor.NestPr
 
 	srv := &HTTPServer{
 		logger:               logger,
+		gitSHA:               gitSHA,
 		ginRouter:            r,
 		nestProcessorManager: nestProcessorManager,
 		statsCollector:       statsCollector,
