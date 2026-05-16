@@ -27,6 +27,7 @@ go.work
 /fletchling-osm-importer
 /fletchling-db-exporter
 /fletchling-db-refresher
+/version/version.go
 /docker-compose.yml
 /vendor
 /logs
