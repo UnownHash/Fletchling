@@ -211,6 +211,10 @@ jobs:
           chmod 755 "${{ runner.temp }}/${dir_name}/fletchling-db-refresher"
           chmod 755 "${{ runner.temp }}/${dir_name}/fletchling-db-exporter"
           cp -p docs/*.md "${{ runner.temp }}/${dir_name}/docs/"
+          mkdir -p "${{ runner.temp }}/${dir_name}/configs"
+          cp -p configs/fletchling.toml.example "${{ runner.temp }}/${dir_name}/configs/"
+          mkdir -p "${{ runner.temp }}/${dir_name}/logs"
+          touch "${{ runner.temp }}/${dir_name}/logs/.gitkeep"
           tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" \
             -C "${{ runner.temp }}" "${dir_name}"
       - name: Upload release assets
