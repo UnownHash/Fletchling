@@ -579,6 +579,7 @@ func (st *NestsDBStore) Migrate(migratePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to the DB: %w", err)
 	}
+	defer db.Close()
 
 	dbDriver, err := migrate_mysql.WithInstance(db, migrateConfig)
 	if err != nil {
@@ -691,6 +692,7 @@ func NewNestsDBStore(config DBConfig, logger *logrus.Logger) (*NestsDBStore, err
 
 	db.SetMaxOpenConns(config.MaxPool)
 	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	return &NestsDBStore{
 		logger: logger,
