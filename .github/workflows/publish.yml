@@ -226,8 +226,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="fletchling-${{ steps.version.outputs.value }}"
+          prerelease_flag=""
+          if [ "${{ github.ref }}" = "refs/heads/testing" ]; then
+            prerelease_flag="--prerelease"
+          fi
           # Create release if it doesn't exist
-          gh release create "$tag" --title "$tag" --notes "Fletchling ${{ steps.version.outputs.value }}" 2>/dev/null || true
+          gh release create "$tag" --target "${{ github.ref_name }}" \
+            $prerelease_flag \
+            --title "$tag" --notes "Fletchling ${{ steps.version.outputs.value }}" 2>/dev/null || true
           # Upload binary tarball
           gh release upload "$tag" \
             "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" --clobber
