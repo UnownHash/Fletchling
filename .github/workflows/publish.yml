@@ -213,13 +213,6 @@ jobs:
           cp -p docs/*.md "${{ runner.temp }}/${dir_name}/docs/"
           tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" \
             -C "${{ runner.temp }}" "${dir_name}"
-      - name: Create source tar.gz
-        if: steps.version.outputs.should_release == 'true' && matrix.arch == 'linux-amd64'
-        run: |
-          tar -czf "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" \
-            --transform "s,^\./,fletchling-${{ steps.version.outputs.value }}-src/," \
-            --exclude='.git' \
-            -C "${{ github.workspace }}" .
       - name: Upload release assets
         if: steps.version.outputs.should_release == 'true'
         env:
@@ -237,8 +230,3 @@ jobs:
           # Upload binary tarball
           gh release upload "$tag" \
             "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-${{ matrix.arch }}.tar.gz" --clobber
-          # Upload source tarball (only from one matrix leg)
-          if [ "${{ matrix.arch }}" = "linux-amd64" ]; then
-            gh release upload "$tag" \
-              "${{ runner.temp }}/fletchling-${{ steps.version.outputs.value }}-src.tar.gz" --clobber
-          fi
