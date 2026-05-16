@@ -64,7 +64,7 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Fprintf(os.Stdout, "%s\n", version.APP_VERSION)
+		fmt.Fprintf(os.Stdout, "%s[%s]\n", version.APP_VERSION, version.GetGitSHA())
 		os.Exit(0)
 	}
 
@@ -93,7 +93,9 @@ func main() {
 	util.SetPanicLogger(logger)
 	defer util.HandlePanic()
 
-	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
+	gitSHA := version.GetGitSHA()
+
+	logger.Infof("STARTUP: Version %s[%s]. Config loaded.", version.APP_VERSION, gitSHA)
 
 	statsCollector := stats_collector.GetStatsCollector(cfg)
 	logger.Infof("STARTUP: using %s stats collector", statsCollector.Name())
@@ -274,7 +276,7 @@ func main() {
 		}()
 	}
 
-	httpServer, err := httpserver.NewHTTPServer(logger, processorManager, statsCollector, dbRefresher, reloadFn, getFiltersConfigFn)
+	httpServer, err := httpserver.NewHTTPServer(logger, gitSHA, processorManager, statsCollector, dbRefresher, reloadFn, getFiltersConfigFn)
 	if err != nil {
 		logger.Fatalf("failed to create http server: %v", err)
 	}

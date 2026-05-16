@@ -70,7 +70,7 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Fprintf(os.Stdout, "%s\n", version.APP_VERSION)
+		fmt.Fprintf(os.Stdout, "%s[%s]\n", version.APP_VERSION, version.GetGitSHA())
 		os.Exit(0)
 	}
 
@@ -96,7 +96,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION)
+	logger.Infof("STARTUP: Version %s. Config loaded.", version.APP_VERSION, version.GetGitSHA())
 
 	// check destination first before we attempt to load
 	// area fences.

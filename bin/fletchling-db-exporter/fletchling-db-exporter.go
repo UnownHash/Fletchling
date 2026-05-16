@@ -77,7 +77,7 @@ func main() {
 	}
 
 	if *versionFlag {
-		fmt.Fprintf(os.Stdout, "%s\n", version.APP_VERSION)
+		fmt.Fprintf(os.Stdout, "%s[%s]\n", version.APP_VERSION, version.GetGitSHA())
 		os.Exit(0)
 	}
 
