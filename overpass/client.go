@@ -69,6 +69,9 @@ func (cli *Client) doSingleQuery(ctx context.Context, v url.Values) (*osm.OSM, e
 		if err != nil {
 			return nil, err
 		}
+		if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+			return nil, fmt.Errorf("%w: received status code %d", errTransient, resp.StatusCode)
+		}
 		return nil, fmt.Errorf("received status code %d: body: %s", resp.StatusCode, string(respBytes))
 	}
 
@@ -98,6 +101,8 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 	}
 
 	max_tries := 5
+	max_transient_tries := 10
+	transient_attempt := 0
 
 	for {
 		osm_data, err := cli.doSingleQuery(ctx, urlValues)
@@ -109,6 +114,21 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 			if err := util.SleepContext(ctx, time.Second); err != nil {
 				return nil, err
 			}
+			continue
+		}
+		if errors.Is(err, errTransient) {
+			if transient_attempt >= max_transient_tries {
+				return nil, err
+			}
+			backoff := time.Duration(1<<transient_attempt) * time.Second
+			if backoff > 60*time.Second {
+				backoff = 60 * time.Second
+			}
+			cli.logger.Warnf("overpass transient error: %v. retry %d/%d after %s.", err, transient_attempt+1, max_transient_tries, backoff)
+			if err := util.SleepContext(ctx, backoff); err != nil {
+				return nil, err
+			}
+			transient_attempt++
 			continue
 		}
 		if err == errDupeQuery {
