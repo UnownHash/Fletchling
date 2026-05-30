@@ -100,9 +100,9 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 		},
 	}
 
-	max_tries := 5
-	max_transient_tries := 10
-	transient_attempt := 0
+	maxTries := 5
+	maxTransientTries := 10
+	transientAttempt := 0
 
 	for {
 		osm_data, err := cli.doSingleQuery(ctx, urlValues)
@@ -117,27 +117,27 @@ func (cli *Client) GetPossibleNestLocations(ctx context.Context, bound orb.Bound
 			continue
 		}
 		if errors.Is(err, errTransient) {
-			if transient_attempt >= max_transient_tries {
+			if transientAttempt >= maxTransientTries {
 				return nil, err
 			}
-			backoff := time.Duration(1<<transient_attempt) * time.Second
+			backoff := time.Duration(1<<transientAttempt) * time.Second
 			if backoff > 60*time.Second {
 				backoff = 60 * time.Second
 			}
-			cli.logger.Warnf("overpass transient error: %v. retry %d/%d after %s.", err, transient_attempt+1, max_transient_tries, backoff)
+			cli.logger.Warnf("overpass transient error: %v. retry %d/%d after %s.", err, transientAttempt+1, maxTransientTries, backoff)
 			if err := util.SleepContext(ctx, backoff); err != nil {
 				return nil, err
 			}
-			transient_attempt++
+			transientAttempt++
 			continue
 		}
 		if err == errDupeQuery {
-			if max_tries <= 0 {
+			if maxTries <= 0 {
 				return nil, err
 			}
 			bound, bbox = cli.fuzzBound(bound)
 			urlValues["data"][0] = searchPrefix + bbox + searchSuffix
-			max_tries--
+			maxTries--
 			continue
 		}
 		return nil, err
