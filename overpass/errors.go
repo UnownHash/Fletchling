@@ -9,6 +9,7 @@ import (
 var (
 	errTimeout   = errors.New("timeout occurred")
 	errDupeQuery = errors.New("dupe query")
+	errTransient = errors.New("transient http error")
 
 	readAndIdxBytes     = []byte("Dispatcher_Client::request_read_and_idx::")
 	errReadAndIdxTokens = []struct {
